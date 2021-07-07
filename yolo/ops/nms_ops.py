@@ -926,16 +926,16 @@ def nms(boxes,
   # drop all the low class confidence boxes again
   
   
-  if prenms_top_k > NMS_TILE_SIZE:
-    confidence, boxes, classes = sort_drop(confidence, boxes, classes, tf.shape(confidence)[-1])
-    confidence, boxes, classes = BASE_NMS._sorted_nms_class_indep(
-      confidence, boxes + classes, tf.squeeze(classes, axis = -1), k, nms_thresh
-    )
-    boxes -= tf.expand_dims(classes, axis = -1)
-  else:
-    confidence, boxes, classes = sort_drop(confidence, boxes, classes, prenms_top_k)
-    confidence, boxes, classes = segment_nms(boxes + classes, classes, confidence, nms_thresh)
-    boxes -= classes
+  # if prenms_top_k > NMS_TILE_SIZE:
+  #   confidence, boxes, classes = sort_drop(confidence, boxes, classes, tf.shape(confidence)[-1])
+  #   confidence, boxes, classes = BASE_NMS._sorted_nms_class_indep(
+  #     confidence, boxes + classes, tf.squeeze(classes, axis = -1), k, nms_thresh
+  #   )
+  #   boxes -= tf.expand_dims(classes, axis = -1)
+  # else:
+  confidence, boxes, classes = sort_drop(confidence, boxes, classes, prenms_top_k)
+  confidence, boxes, classes = segment_nms(boxes + classes, classes, confidence, nms_thresh)
+  boxes -= classes
 
   confidence, boxes, classes = sort_drop(confidence, boxes, classes, k)
 

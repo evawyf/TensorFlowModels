@@ -79,7 +79,7 @@ task:
       sheer: 0.0
       aug_scale_min: 0.2
       aug_scale_max: 1.8
-      mosaic_scale_min: 0.2
+      mosaic_scale_min: 0.3
       mosaic_scale_max: 1.5
       aug_rand_translate: 0.0
       area_thresh: 0.2

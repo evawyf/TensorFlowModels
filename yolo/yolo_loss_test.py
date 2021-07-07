@@ -40,7 +40,7 @@ if __name__ == "__main__":
   task, model, params = load_model(
       experiment="yolo_custom",
       # config_path=["yolo/configs/experiments/yolov4-csp/inference/512-baseline.yaml"],
-      config_path=["yolo/configs/experiments/yolov4/inference/512-baseline.yaml"],
+      config_path=["yolo/configs/experiments/yolov4/inference/512-baseline-91.yaml"],
       model_dir="")
       # model_dir='/home/vbanna/Research/checkpoints/yolov4-csp/tpu/512')
       # model_dir='/home/vbanna/Research/checkpoints/250k-512-lr-special-t2')

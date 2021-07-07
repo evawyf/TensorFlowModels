@@ -367,8 +367,8 @@ class Yolo_Loss(object):
     else:
       self._loss_type = 0
 
-    self._classes = tf.constant(tf.cast(classes, dtype=tf.int32))
-    self._num = tf.cast(len(mask), dtype=tf.int32)
+    self._classes = classes
+    self._num = len(mask)
     self._truth_thresh = truth_thresh
     self._ignore_thresh = ignore_thresh
     self._masks = mask

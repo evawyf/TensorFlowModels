@@ -62,8 +62,9 @@ def resize_input_image(image,
 if __name__ == "__main__":
   task, model, params = load_model(
       experiment="yolo_custom",
-      config_path=["yolo/configs/experiments/yolov4-csp/inference/512-baseline.yaml"],
-      model_dir='')
+      # config_path=["yolo/configs/experiments/yolov4-csp/inference/512-baseline.yaml"],
+      config_path=["yolo/configs/experiments/yolov4/inference/512-baseline-91.yaml"],
+      model_dir="")
   draw_fn = utils.DrawBoxes(
       classes=params.task.model.num_classes,
       labels=coco.get_coco_names(
@@ -81,6 +82,9 @@ if __name__ == "__main__":
   image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
   image = cv2.resize(image, params.task.model.input_size[:2])
   image = draw_fn(image / 255, pred)
+
+
+  model.save("../checkpoints/saved_models/jitter-test", include_optimizer=False)
 
   cv2.imshow("testframe", image)
   k = cv2.waitKey(0)

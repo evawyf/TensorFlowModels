@@ -484,13 +484,14 @@ class FastVideo(object):
 
 def func(inputs):
   boxes = inputs['bbox']
-  classifs = inputs['confidence']
-  nms = tf.image.combined_non_max_suppression(
-      tf.expand_dims(boxes, axis=2), classifs, 200, 200, 0.5, 0.5)
+  classifs = inputs['classes']
+  conf = inputs['confidence']
+  # nms = tf.image.combined_non_max_suppression(
+  #     tf.expand_dims(boxes, axis=2), classifs, 200, 200, 0.5, 0.5)
   return {
-      'bbox': nms.nmsed_boxes,
-      'classes': nms.nmsed_classes,
-      'confidence': nms.nmsed_scores,
+      'bbox': boxes,
+      'classes': classifs,
+      'confidence': conf,
   }
 
 
@@ -517,9 +518,9 @@ def get_model(model):
 
 
 # import yolo.utils.export.tensor_rt as trt
-# model(tf.ones((1, 416, 416, 3), dtype = tf.float32))
-# name = "saved_models/v3/tflite-tiny-no-nms"
-# model.save(name, overwrite=True)
+# # model(tf.ones((1, 416, 416, 3), dtype = tf.float32))
+# name = "/home/vbanna/Research/checkpoints/saved_models/jitter-test"
+# # model.save(name, overwrite=True)
 # new_name = f"{name}_tensorrt"
 # model = trt.TensorRT(saved_model=name, save_new_path=new_name, max_workspace_size_bytes=4000000000, max_batch_size=5)#, precision_mode="INT8", use_calibration=True)
 # model.convertModel()
