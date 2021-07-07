@@ -31,7 +31,7 @@ def test_yolo_input_task():
   experiment = "yolo_custom"
   # config_path = ["yolo/configs/experiments/yolov4/debug/jitter-scale/512-jitter-scale-ema.yaml"]
   # config_path = ["yolo/configs/experiments/yolov4/debug/jitter-scale/608-jitter-scale-ema.yaml"]
-  config_path = ["yolo/configs/experiments/yolov4-csp/debug/512-v4-aug.yaml"]
+  config_path = ["yolo/configs/experiments/yolov4-csp/debug/640-v4-aug.yaml"]
   # config_path = ["yolo/configs/experiments/yolov4/debug/state-test/512-state-test-ema.yaml"]
   # config_path = ["yolo/configs/experiments/yolov4-csp/inference/512-baseline.yaml"]
   # onfig_path = ["yolo/configs/experiments/yolov4/debug/512-jitter-scale-lthresh.yaml"]
