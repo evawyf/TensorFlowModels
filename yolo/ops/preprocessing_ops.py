@@ -517,8 +517,8 @@ def resize_and_crop_image(image,
                                        aug_scale_min,
                                        aug_scale_max,
                                        seed=seed)
-      # scaled_size = tf.round(random_scale * image_size)
-      scaled_size = tf.round(random_scale * desired_size_)
+      scaled_size = tf.round(random_scale * image_size)
+      # scaled_size = tf.round(random_scale * desired_size_)
     else:
       random_scale = 1.0
       scaled_size = desired_size
