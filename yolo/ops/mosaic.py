@@ -115,9 +115,10 @@ class Mosaic(object):
       image, 
       height, 
       width, 
-      translate = 1.0
+      pad = False,  
+      translate = 0.5
     )
-    return image, [info]
+    return image, info
 
   def _crop_image(self, image, crop_area):
     image, info = preprocessing_ops.random_crop_image(
@@ -191,8 +192,10 @@ class Mosaic(object):
           letter_box=None,
           aug_scale_min=self._crop_area_mosaic[0],
           aug_scale_max=self._crop_area_mosaic[1], 
-          random_pad=self._random_pad,
+          random_pad=True,
           translate=self._translate,
+          shiftx=0.5, 
+          shifty=0.5,
           seed=self._seed)
       height, width = self._output_size[0], self._output_size[1]
       image = tf.image.resize(image, (height, width))

@@ -351,11 +351,6 @@ class Parser(parser.Parser):
     classes = tf.gather(classes, inds)
     info = infos[-1]
 
-    # if self._aug_rand_translate > 0.0:
-    #   # apply random translation to the image
-    #   image, tx, ty = preprocessing_ops.random_translate(
-    #       image, self._aug_rand_translate)
-    #   boxes, classes = preprocessing_ops.translate_boxes(boxes, classes, tx, ty)
 
     if self._aug_rand_angle > 0:
       # apply rotation to the images

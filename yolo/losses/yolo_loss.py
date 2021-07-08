@@ -592,8 +592,8 @@ class Yolo_Loss(object):
       iou_ = tf.where(iou_max > 0, iou_, tf.zeros_like(iou_))
 
       # update the true conffidence mask with the best matching iou
-      true_conf = tf.where(iou_mask, iou_, true_conf)
-      # true_conf = iou_
+      # true_conf = tf.where(iou_mask, iou_, true_conf)
+      true_conf = iou_
 
     # stop gradient on all components to save resources, we don't
     # need to track the gradient though the while loop as they are
@@ -659,10 +659,10 @@ class Yolo_Loss(object):
     boxes = tf.stop_gradient(tf.cast(boxes, tf.float32))
     classes = tf.stop_gradient(tf.cast(classes, tf.float32))
     y_true = tf.stop_gradient(tf.cast(y_true, tf.float32))
-    true_counts = tf.stop_gradient(tf.cast(true_counts, tf.float32))
-    true_conf = tf.stop_gradient(tf.clip_by_value(true_counts, 0.0, 1.0))
+    true_conf = tf.stop_gradient(
+      tf.cast(tf.clip_by_value(true_counts, 0.0, 1.0), tf.float32))
     grid_points, anchor_grid = self._anchor_generator(
-        width, height, batch_size, dtype=tf.float32)
+        width, height, batch_size, dtype=tf.float32, stop_grad = FalseZ)
 
     # 2. split the y_true grid into the usable items, set the shapes correctly
     #    and save the true_confdence mask before it get altered
@@ -689,7 +689,7 @@ class Yolo_Loss(object):
     #    at all
     scale, pred_box, _ = self._decode_boxes(
         fwidth, fheight, pred_box, anchor_grid, grid_points, darknet=False)
-    true_box = tf.stop_gradient(true_box * scale)
+    true_box = true_box * scale
 
     #    gather all the indexes that a loss should be computed at also stop the
     #    gradient on grount truths to save memory
@@ -759,7 +759,7 @@ class Yolo_Loss(object):
 
     # 4. apply sigmoid to items and use the gradient trap to contol the backprop
     #    and selective gradient clipping
-    sigmoid_conf = tf.sigmoid(pred_conf)
+    sigmoid_conf = tf.stop_gradient(tf.sigmoid(pred_conf))
 
     # 11. compute all the values for the metrics
     recall50, precision50 = self.APAR(sigmoid_conf, grid_mask, pct=0.5)
@@ -787,8 +787,7 @@ class Yolo_Loss(object):
     boxes = tf.stop_gradient(tf.cast(boxes, tf.float32))
     classes = tf.stop_gradient(tf.cast(classes, tf.float32))
     y_true = tf.stop_gradient(tf.cast(y_true, tf.float32))
-    true_counts = tf.stop_gradient(tf.cast(true_counts, tf.float32))
-    true_conf = tf.stop_gradient(tf.clip_by_value(true_counts, 0.0, 1.0))
+    true_conf = tf.stop_gradient(tf.cast(tf.clip_by_value(true_counts, 0.0, 1.0), tf.float32))
     grid_points, anchor_grid = self._anchor_generator(
         width, height, batch_size, dtype=tf.float32)
 

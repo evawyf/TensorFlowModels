@@ -394,3 +394,68 @@
 #       infos.append(crop_info)
     
 #     return image, infos 
+
+
+# def mean_pad(image, pady, padx, targety, targetx, color = False):
+#   shape = tf.shape(image)[:2]
+#   pad = [pady, padx, targety - shape[0] - pady, targetx - shape[1] - padx]
+  
+#   if color: 
+#     r, g, b = tf.split(image, 3, axis = -1)
+#     r = tf.pad(r, [[pad[0], pad[2]], 
+#                   [pad[1], pad[3]], 
+#                   [0, 0]], 
+#                   constant_values=tf.reduce_mean(r))
+#     g = tf.pad(g, [[pad[0], pad[2]], 
+#                   [pad[1], pad[3]], 
+#                   [0, 0]], 
+#                   constant_values=tf.reduce_mean(g))
+#     b = tf.pad(b, [[pad[0], pad[2]], 
+#                   [pad[1], pad[3]], 
+#                   [0, 0]], 
+#                   constant_values=tf.reduce_mean(b))
+#     image_ = tf.concat([r, g, b], axis = -1)
+#   else:
+#     image_ = tf.pad(image, [[pad[0], pad[2]], 
+#                             [pad[1], pad[3]], 
+#                             [0, 0]], constant_values=0.5)
+
+#   pad_info = tf.stack([
+#         tf.cast(tf.shape(image)[:2], tf.float32),
+#         tf.cast(tf.shape(image_)[:2], dtype=tf.float32),
+#         tf.ones_like(tf.shape(image)[:2], dtype = tf.float32),
+#         -tf.cast(pad[:2], tf.float32)
+#     ])
+#   return image_, pad_info
+
+# def random_window_crop(image, 
+#                        target_height, 
+#                        target_width, 
+#                        translate = 0.0):
+
+#   ishape = tf.shape(image)
+#   th = target_height if target_height < ishape[0] else ishape[0]
+#   tw = target_width if target_width < ishape[1] else ishape[1]
+#   crop_size = tf.convert_to_tensor([th, tw, -1])
+
+#   crop_offset = ishape - crop_size
+#   crop_offset = tf.convert_to_tensor([crop_offset[0]//2, crop_offset[1]//2, 0])
+#   shift = tf.convert_to_tensor([rand_uniform_strong(-translate, translate), 
+#                                 rand_uniform_strong(-translate, translate), 
+#                                 0])
+#   crop_offset = crop_offset + tf.cast(shift * tf.cast(crop_offset, 
+#                                                       shift.dtype), 
+#                                                       crop_offset.dtype)
+#   #tf.print(crop_offset, shift, ishape, crop_size)
+#   cropped_image = tf.slice(image, crop_offset, crop_size)
+
+#   scale = tf.cast(ishape[:2] / ishape[:2], tf.float32)
+#   offset = tf.cast(crop_offset[:2], tf.float32)
+
+#   info = tf.stack([
+#       tf.cast(ishape[:2], tf.float32),
+#       tf.cast(crop_size[:2], tf.float32), 
+#       scale, 
+#       offset],axis=0)
+
+#   return cropped_image, info

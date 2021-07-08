@@ -1,5 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras import backend as K
+from tensorflow.python.ops.gen_array_ops import stop_gradient
 
 
 def _build_grid_points(lwidth, lheight, anchors, dtype):
@@ -49,7 +50,7 @@ class GridGenerator(object):
   def _extend_batch(self, grid, batch_size):
     return tf.tile(grid, [batch_size, 1, 1, 1, 1])
 
-  def __call__(self, width, height, batch_size, dtype=None):
+  def __call__(self, width, height, batch_size, dtype=None, stop_grad = True):
     if dtype is None:
       self.dtype = tf.keras.backend.floatx()
     else:
@@ -68,4 +69,7 @@ class GridGenerator(object):
     
     grid_points = self._extend_batch(grid_points, batch_size)
     anchor_grid = self._extend_batch(anchor_grid, batch_size)
-    return tf.stop_gradient(grid_points), tf.stop_gradient(anchor_grid)
+    if stop_grad:
+      return tf.stop_gradient(grid_points), tf.stop_gradient(anchor_grid)
+    else:
+      return grid_points, anchor_grid

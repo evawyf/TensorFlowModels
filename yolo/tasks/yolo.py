@@ -378,6 +378,7 @@ class YoloTask(base_task.Task):
             label['source_id'],
     }
 
+    tf.print(label['source_id'], loss)
 
     if metrics:
       logs.update({self.coco_metric.name: (label, coco_model_outputs)})

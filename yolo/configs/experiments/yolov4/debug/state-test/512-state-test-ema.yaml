@@ -84,7 +84,7 @@ task:
       mosaic_scale_max: 2.0
       area_thresh: 0.20
       random_pad: true 
-      aug_rand_translate: 1.0
+      aug_rand_translate: -0.5 # negative values will only apply tranlation to crops
       use_tie_breaker: True
       use_scale_xy: False
       anchor_thresh: 0.213
