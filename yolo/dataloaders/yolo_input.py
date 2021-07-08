@@ -435,6 +435,13 @@ class Parser(parser.Parser):
     classes = tf.gather(classes, inds)
     info = infos[-1]
 
+    # resize to verify and set shape
+    image = tf.image.resize(
+        image, (self._image_h, self._image_w),
+        preserve_aspect_ratio=False,
+        antialias=False,
+        name=None)
+    
     # cast the image to the selcted datatype
     image = tf.cast(image, self._dtype)
     height, width = preprocessing_ops.get_image_shape(image)
