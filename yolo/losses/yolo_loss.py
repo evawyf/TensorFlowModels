@@ -662,7 +662,7 @@ class Yolo_Loss(object):
     true_conf = tf.stop_gradient(
       tf.cast(tf.clip_by_value(true_counts, 0.0, 1.0), tf.float32))
     grid_points, anchor_grid = self._anchor_generator(
-        width, height, batch_size, dtype=tf.float32, stop_grad = FalseZ)
+        width, height, batch_size, dtype=tf.float32, stop_grad = False)
 
     # 2. split the y_true grid into the usable items, set the shapes correctly
     #    and save the true_confdence mask before it get altered

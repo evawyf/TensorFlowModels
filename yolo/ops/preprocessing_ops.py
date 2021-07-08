@@ -292,10 +292,6 @@ def rotate_boxes(boxes, angle):
   return boxes
 
 
-
-
-
-
 def random_crop_image(image,
                       aspect_ratio_range=(3. / 4., 4. / 3.),
                       area_range=(0.08, 1.0),
@@ -340,6 +336,9 @@ def random_crop_image(image,
     ],
                     axis=0)
     return cropped_image, info
+
+
+
 
 
 def random_window_crop(image, 
