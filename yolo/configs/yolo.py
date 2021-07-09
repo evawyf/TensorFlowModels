@@ -123,13 +123,14 @@ class ModelConfig(hyperparams.Config):
 class Mosaic(hyperparams.Config):
   max_resolution: int = 640
   mosaic_frequency: float = 0.75
-  crop_area: List[int] = dataclasses.field(default_factory=lambda: [0.2, 1.0])
-  crop_area_mosaic: List[int] = dataclasses.field(
-      default_factory=lambda: [1.0, 1.0])
+  crop_area: List[float] = dataclasses.field(
+    default_factory=lambda: [0.25, 1.0])
+  crop_area_mosaic: List[float] = dataclasses.field(
+    default_factory=lambda: [1.0, 1.0])
+  scale_translate: List[float] = dataclasses.field(
+    default_factory=lambda: [0.5, 0.5])
   aspect_ratio_mode: str = 'crop'
-  mosaic_crop_mode: Optional[str] = 'crop_scale'
-  aug_scale_min: Optional[float] = None
-  aug_scale_max: Optional[float] = None
+  mosaic_crop_mode: Optional[str] = 'scale'
   jitter: Optional[float] = None
   resize: Optional[float] = None
   output_resolution: Optional[List[int]] = None #dataclasses.field(default_factory=lambda: [640, 640])
@@ -140,21 +141,28 @@ class Parser(hyperparams.Config):
   max_num_instances: int = 200
   letter_box: Optional[bool] = False
   random_flip: bool = True
-  random_pad: float = True
+  random_pad: float = False
   jitter: float = 0.0
   resize: float = 1.0
   jitter_mosaic: float = 0.0
   resize_mosaic: float = 1.0
   sheer: float = 0.0
-  aug_rand_angle: float = 0.0
-  aug_rand_translate: float = 0.0
+  
   aug_rand_saturation: float = 0.0 #0.7
   aug_rand_brightness: float = 0.0  #0.4
   aug_rand_hue: float = 0.0 #0.1
-  aug_scale_min: float = 1.0
-  aug_scale_max: float = 1.0
-  mosaic_scale_min: float = 1.0
-  mosaic_scale_max: float = 1.0
+
+  aug_scale: List[float] = dataclasses.field(
+    default_factory=lambda: [1.0, 1.0])
+  mosaic_scale: List[float] = dataclasses.field(
+    default_factory=lambda: [1.0, 1.0])
+  rand_translate: List[float] = dataclasses.field(
+    default_factory=lambda: [0.0, 0.0])
+  mosaic_translate: List[float] = dataclasses.field(
+    default_factory=lambda: [0.0, 0.0])
+  center: bool = False
+
+  aug_rand_angle: float = 0.0
   use_tie_breaker: bool = True
   use_scale_xy: bool = False
   anchor_thresh: float = 0.213
@@ -196,6 +204,7 @@ class DataConfig(cfg.DataConfig):
   shuffle_buffer_size: int = 10000
   tfds_download: bool = True
   cache: bool = False
+  seed: Optional[int] = 1
 
 
 @dataclasses.dataclass

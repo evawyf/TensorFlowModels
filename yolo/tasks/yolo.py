@@ -164,44 +164,53 @@ class YoloTask(base_task.Task):
         mosaic_frequency=params.parser.mosaic.mosaic_frequency,
         crop_area=params.parser.mosaic.crop_area,
         crop_area_mosaic=params.parser.mosaic.crop_area_mosaic,
+        scale_translate=params.parser.mosaic.scale_translate,
         mosaic_crop_mode=params.parser.mosaic.mosaic_crop_mode,
         aspect_ratio_mode=params.parser.mosaic.aspect_ratio_mode,
         random_crop=rcrop,
-        random_pad=params.parser.random_pad,
-        translate=params.parser.aug_rand_translate,
         resize=rsize,
-        area_thresh=params.parser.area_thresh)
+        area_thresh=params.parser.area_thresh,
+        seed=params.seed)
 
     parser = yolo_input.Parser(
         output_size=model.input_size,
         min_level=model.min_level,
         max_level=model.max_level,
-        masks=masks,
-        anchors=anchors,
-        letter_box=params.parser.letter_box,
-        use_tie_breaker=params.parser.use_tie_breaker,
-        random_flip=params.parser.random_flip,
+
         jitter=params.parser.jitter,
         resize=params.parser.resize,
         jitter_mosaic=params.parser.jitter_mosaic,
         resize_mosaic=params.parser.resize_mosaic,
         sheer=params.parser.sheer,
-        aug_rand_transalate=params.parser.aug_rand_translate,
+        aug_rand_angle=params.parser.aug_rand_angle,
+
         aug_rand_saturation=params.parser.aug_rand_saturation,
         aug_rand_brightness=params.parser.aug_rand_brightness,
-        aug_scale_min=params.parser.aug_scale_min,
-        aug_scale_max=params.parser.aug_scale_max,
-        mosaic_min = params.parser.mosaic_scale_min,
-        mosaic_max = params.parser.mosaic_scale_max,
-        random_pad=params.parser.random_pad,
         aug_rand_hue=params.parser.aug_rand_hue,
-        aug_rand_angle=params.parser.aug_rand_angle,
-        max_num_instances=params.parser.max_num_instances,
-        scale_xy=xy_scales,
+
+        aug_scale=params.parser.aug_scale,
+        mosaic_scale = params.parser.mosaic_scale,
+        rand_translate=params.parser.rand_translate,
+        mosaic_translate = params.parser.mosaic_translate,
+
+        random_pad=params.parser.random_pad,
+        center=params.parser.center,
+
+        letter_box=params.parser.letter_box,
+        random_flip=params.parser.random_flip,
+
         area_thresh=params.parser.area_thresh, 
-        use_scale_xy=params.parser.use_scale_xy,
+        max_num_instances=params.parser.max_num_instances,
         anchor_t=params.parser.anchor_thresh,
-        dtype=params.dtype)
+
+        scale_xy=xy_scales,
+        use_scale_xy=params.parser.use_scale_xy,
+        masks=masks,
+        anchors=anchors,
+
+        use_tie_breaker=params.parser.use_tie_breaker,      
+        dtype=params.dtype, 
+        seed=params.seed)
 
     reader = input_reader.InputReader(
         params,

@@ -29,11 +29,11 @@ from yolo.utils.run_utils import prep_gpu
 def test_yolo_input_task():
   # with tf.device('/CPU:0'):
   experiment = "yolo_custom"
-  # config_path = ["yolo/configs/experiments/yolov4/debug/jitter-scale/512-jitter-scale-ema.yaml"]
+  config_path = ["yolo/configs/experiments/yolov4/debug/jitter-scale/512-jitter-scale-ema.yaml"]
   # config_path = ["yolo/configs/experiments/yolov4/debug/jitter-scale/608-jitter-scale-ema.yaml"]
   # config_path = ["yolo/configs/experiments/yolov4-csp/debug/640-v4-aug.yaml"]
   # config_path = ["yolo/configs/experiments/yolov4/debug/state-test/512-state-test-ema.yaml"]
-  config_path = ["yolo/configs/experiments/yolov4-csp/debug/512-baseline-ema.yaml"]
+  # config_path = ["yolo/configs/experiments/yolov4-csp/debug/512-baseline-ema.yaml"]
   # onfig_path = ["yolo/configs/experiments/yolov4/debug/512-jitter-scale-lthresh.yaml"]
   # config_path = ["yolo/configs/experiments/yolov4/debug/512-jitter-scale.yaml"]
   # config_path = ["yolo/configs/experiments/yolov4/debug/512-jitter-long.yaml"]
@@ -280,8 +280,8 @@ if __name__ == '__main__':
 
   # test_ret_pipeline()
   # time_pipeline()
-  test_yolo_pipeline(is_training=True, num = 30)
-  test_yolo_pipeline(is_training=False, num = 5)
+  test_yolo_pipeline(is_training=True, num = 60)
+  #test_yolo_pipeline(is_training=False, num = 5)
   # test_classification_pipeline()
   # from yolo.ops import preprocessing_ops as po
   # dataset, dsp = test_yolo_input_task()

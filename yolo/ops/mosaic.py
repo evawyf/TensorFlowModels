@@ -19,18 +19,14 @@ class Mosaic(object):
                output_size,
                max_resolution=640,
                mosaic_frequency=1.0,
-               random_crop=0.0,
                resize=1.0,
+               random_crop=0.0,
                aspect_ratio_mode='distort',
-               aug_scale_min=1.0,
-               aug_scale_max=1.0,
+               mosaic_crop_mode=None,
                random_flip=True,
-               random_pad = False, 
-               translate = 0.5, 
                crop_area=[0.5, 1.0],
                crop_area_mosaic=[0.5, 1.0],
-               mosaic_crop_mode=None,
-               aug_probability=1.0,
+               scale_translate =[0.5, 0.5], 
                area_thresh = 0.1, 
                seed=None):
 
@@ -41,16 +37,12 @@ class Mosaic(object):
     self._aspect_ratio_mode = aspect_ratio_mode
     self._random_crop = random_crop
     self._resize = resize
-    self._aug_scale_max = aug_scale_max
-    self._aug_scale_min = aug_scale_min
     self._random_flip = random_flip
-    self._aug_probability = aug_probability
-    self._random_pad = random_pad
-    self._translate = translate
-
+    
     self._crop_area = crop_area
     self._area_thresh = area_thresh
 
+    self._scale_translate = scale_translate
     self._mosaic_crop_mode = mosaic_crop_mode
     self._crop_area_mosaic = crop_area_mosaic
 
@@ -107,16 +99,18 @@ class Mosaic(object):
 
   def _mosaic_crop(self, image, crop_area):
     scale = preprocessing_ops.rand_uniform_strong(tf.math.sqrt(crop_area[0]), 
-                                                  tf.math.sqrt(crop_area[1]))
+                                                  tf.math.sqrt(crop_area[1]), 
+                                                  seed = self._seed)
     height, width = preprocessing_ops.get_image_shape(image)
     width = tf.cast(tf.cast(width, scale.dtype) * scale, tf.int32)
     height = tf.cast(tf.cast(height, scale.dtype) * scale, tf.int32)
-    image, info = preprocessing_ops.random_window_crop(
+    image, info = preprocessing_ops.window(
       image, 
       height, 
       width, 
       pad = False,  
-      translate = 0.5
+      translate = 1.0, 
+      seed = self._seed,
     )
     return image, info
 
@@ -125,7 +119,8 @@ class Mosaic(object):
           image, 
           aspect_ratio_range=[self._output_size[1]/self._output_size[0], 
                               self._output_size[1]/self._output_size[0]], 
-          area_range=crop_area)
+          area_range=crop_area, 
+          seed = self._seed)
     return image, info
 
   def _gen_blank_info(self, image):
@@ -149,7 +144,7 @@ class Mosaic(object):
                      cut = None):
     if self._random_flip:
       # randomly flip the image horizontally
-      image, boxes, _ = preprocess_ops.random_horizontal_flip(image, boxes)
+      image, boxes, _ = preprocess_ops.random_horizontal_flip(image, boxes, seed = self._seed)
 
     # resize the image irrespective of the aspect ratio
     infos = []
@@ -159,7 +154,7 @@ class Mosaic(object):
       letter_box = False
     elif self._aspect_ratio_mode == 'crop':
       info = self._gen_blank_info(image)
-      docrop = tf.random.uniform([], 0.0, 1.0, dtype=tf.float32)
+      docrop = tf.random.uniform([], 0.0, 1.0, dtype=tf.float32, seed = self._seed)
       if docrop > 1 - self._random_crop:
         image, info = self._crop_image(image, self._crop_area)
       infos.append(info)
@@ -174,11 +169,12 @@ class Mosaic(object):
         resize = self._resize,
         shiftx=xs,
         shifty=ys,
-        cut = cut)
+        cut = cut, 
+        seed = self._seed)
     infos.extend(infos_)
 
     # clip and clean boxes
-    boxes, inds = preprocessing_ops.apply_infos(boxes, infos, area_thresh = self._area_thresh)
+    boxes, inds = preprocessing_ops.apply_infos(boxes, infos, area_thresh = self._area_thresh, seed = self._seed)
     classes = tf.gather(classes, inds)
     is_crowd = tf.gather(is_crowd, inds)
     area = tf.gather(area, inds)
@@ -186,31 +182,16 @@ class Mosaic(object):
 
   def _mosaic_crop_image(self, image, boxes, classes, is_crowd, area):
     if self._mosaic_crop_mode == "scale":
-      image, infos = preprocessing_ops.resize_and_crop_image(
-          image, [self._output_size[0], self._output_size[1]],
+      image, infos = preprocessing_ops.random_scale_and_translate(
+          image,
           [self._output_size[0], self._output_size[1]],
-          letter_box=None,
           aug_scale_min=self._crop_area_mosaic[0],
           aug_scale_max=self._crop_area_mosaic[1], 
-          random_pad=True,
-          translate=self._translate,
-          shiftx=0.5, 
-          shifty=0.5,
+          translate_min=self._scale_translate[0] ,
+          translate_max=self._scale_translate[1],
+          letter_box = None, 
+          sheer = 0.0, 
           seed=self._seed)
-      height, width = self._output_size[0], self._output_size[1]
-      image = tf.image.resize(image, (height, width))
-    elif self._mosaic_crop_mode == 'crop_scale':
-      image, infos = self._mosaic_crop(image, self._crop_area)
-      image, infos_ = preprocessing_ops.resize_and_crop_image(
-          image, [self._output_size[0] * 2, self._output_size[1] * 2],
-          [self._output_size[0] * 2, self._output_size[1] * 2],
-          letter_box=None,
-          aug_scale_min=self._crop_area_mosaic[0],
-          aug_scale_max=self._crop_area_mosaic[1],
-          random_pad=self._random_pad,
-          translate=self._translate,
-          seed=self._seed)
-      infos.extend(infos_)
       height, width = self._output_size[0], self._output_size[1]
       image = tf.image.resize(image, (height, width))
     else:
@@ -219,7 +200,9 @@ class Mosaic(object):
       image, infos = self._mosaic_crop(image, self._crop_area)
 
     # clip and clean boxes
-    boxes, inds = preprocessing_ops.apply_infos(boxes, infos, area_thresh = self._area_thresh)
+    boxes, inds = preprocessing_ops.apply_infos(boxes, 
+                                                infos, 
+                                                area_thresh = self._area_thresh)
     classes = tf.gather(classes, inds)
     is_crowd = tf.gather(is_crowd, inds)
     area = tf.gather(area, inds)
@@ -244,11 +227,13 @@ class Mosaic(object):
       min_offset = self._crop_area[0]
       cut_x = preprocessing_ops.rand_uniform_strong(
         self._output_size[1] * min_offset, 
-        self._output_size[1] * (1 - min_offset)
+        self._output_size[1] * (1 - min_offset),
+        seed = self._seed,
       )
       cut_y = preprocessing_ops.rand_uniform_strong(
         self._output_size[1] * min_offset, 
-        self._output_size[1] * (1 - min_offset)
+        self._output_size[1] * (1 - min_offset),
+        seed = self._seed
       )
       cut = [cut_x, cut_y]
       ishape = tf.convert_to_tensor([self._output_size[1], 

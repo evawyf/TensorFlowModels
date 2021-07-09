@@ -13,7 +13,8 @@ from official.vision.beta.ops import box_ops as bbox_ops
 
 def rand_uniform_strong(minval, 
                         maxval,
-                        dtype=tf.float32):
+                        dtype=tf.float32, 
+                        seed=None):
   """
   Equivalent to tf.random.uniform, except that minval and maxval are flipped if
   minval is greater than maxval.
@@ -30,27 +31,9 @@ def rand_uniform_strong(minval,
   if minval > maxval:
     minval, maxval = maxval, minval
 
-  return tf.random.uniform([], minval=minval, maxval=maxval, dtype=dtype)
+  return tf.random.uniform([], minval=minval, maxval=maxval, dtype=dtype, seed=seed)
 
-def rand_strong(minval, maxval, dtype=tf.float32):
-  """
-  Equivalent to tf.random.uniform, except that minval and maxval are flipped if
-  minval is greater than maxval.
-  Args:
-    minval: An `int` for a lower or upper endpoint of the interval from which to
-      choose the random number.
-    maxval: An `int` for the other endpoint.
-    dtype: The output type of the tensor.
-  
-  Returns:
-    A random tensor of type dtype that falls between minval and maxval excluding
-    the bigger one.
-  """
-  if minval > maxval:
-    minval, maxval = maxval, minval
-  return tf.random.uniform([], minval=minval, maxval=maxval, dtype=dtype)
-
-def rand_scale(val, dtype=tf.float32):
+def rand_scale(val, dtype=tf.float32, seed=None):
   """
   Generates a random number for the scale. Half the time, the value is between
   [1.0, val) with uniformly distributed probability. The other half, the value
@@ -66,7 +49,7 @@ def rand_scale(val, dtype=tf.float32):
     The random scale.
   """
   scale = rand_uniform_strong(1.0, val, dtype=dtype)
-  do_ret = tf.random.uniform([], minval=0, maxval=2, dtype=tf.int32)
+  do_ret = tf.random.uniform([], minval=0, maxval=2, dtype=tf.int32, seed=seed)
   if (do_ret == 1):
     return scale
   return 1.0 / scale
@@ -173,7 +156,6 @@ def translate_image(image, t_y, t_x):
     image_size = tf.cast([height, width], tf.float32)
     image_scale = tf.ones_like(image_size)
     offset = -tf.cast(translate, tf.float32)
-    tf.print(offset)
 
     image_info = tf.stack([
         image_size,
@@ -184,7 +166,7 @@ def translate_image(image, t_y, t_x):
   return image, image_info
 
 
-def random_rotate_image(image, max_angle):
+def random_rotate_image(image, max_angle, seed = None):
   """
   Rotate an image by a random angle that ranges from [-max_angle, max_angle).
   
@@ -199,7 +181,8 @@ def random_rotate_image(image, max_angle):
   angle = tf.random.uniform([],
                             minval=-max_angle,
                             maxval=max_angle,
-                            dtype=tf.float32)
+                            dtype=tf.float32, 
+                            seed = seed)
   deg = angle * 3.14 / 360.
   deg.set_shape(())
   image = tfa.image.rotate(image, deg, interpolation='BILINEAR')
@@ -337,221 +320,223 @@ def random_crop_image(image,
                     axis=0)
     return cropped_image, info
 
+def _get_identity_info(image):
+  shape_ = tf.shape(image)
+  val = tf.stack([
+      tf.cast(shape_[:2], tf.float32),
+      tf.cast(shape_[:2], tf.float32),
+      tf.ones_like(tf.cast(shape_[:2], tf.float32)),
+      tf.zeros_like(tf.cast(shape_[:2], tf.float32)),
+  ])
+  return val
 
+def _image_distortion(image, 
+                      desired_size, 
+                      letter_box = None, 
+                      sheer = 0.0, 
+                      seed = None):
+  if letter_box == False:
+    height, width = get_image_shape(image)
+    clipper = tf.reduce_max((height, width))
+    image = image = tf.image.resize(
+        image, (clipper, clipper), preserve_aspect_ratio=False)
+  elif letter_box == True:
+    height, width = get_image_shape(image)
+    clipper = tf.reduce_max((height, width))
+    w_scale = width / clipper
+    h_scale = height / clipper
 
+    height_, width_ = desired_size[0], desired_size[1]
+    height_ = tf.cast(h_scale * tf.cast(height_, h_scale.dtype), tf.int32)
+    width_ = tf.cast(w_scale * tf.cast(width_, w_scale.dtype), tf.int32)
 
+    image = image = tf.image.resize(
+      image, (height_, width_), preserve_aspect_ratio=False)
 
-def random_window_crop(image, 
-                       target_height, 
-                       target_width, 
-                       shiftx = 0.5, 
-                       shifty = 0.5, 
-                       pad = True, 
-                       random_pad = True, 
-                       translate = 0.0):
+  if sheer > 0.0: 
+    h_, w_ = get_image_shape(image)
+
+    hr = tf.cast(sheer * tf.cast(h_, tf.float32), tf.int32)
+    wr = tf.cast(sheer * tf.cast(w_, tf.float32), tf.int32)
+
+    h_ += rand_uniform_strong(-hr, hr + 1, tf.int32, seed = seed)
+    w_ += rand_uniform_strong(-wr, wr + 1, tf.int32, seed = seed)
+    image = tf.image.resize(image, (h_, w_))
+  return image
+
+def window(image, 
+           target_height, 
+           target_width, 
+           translate = 0.0,
+           pad = False, 
+           seed = None):
 
   ishape = tf.shape(image)
   scale = tf.cast(ishape[:2] / ishape[:2], tf.float32)
-  ctranslate = translate
+  target_height = tf.cast(target_height, tf.int32)
+  target_width = tf.cast(target_width, tf.int32)
 
-  if random_pad and translate <= 0:
-    # if translate is less than zero the translation is onbly applied to the 
-    # images that get cropped, not padded
-    shiftx = tf.clip_by_value(rand_uniform_strong(-0.2, 1.2), 0, 1)
-    shifty = tf.clip_by_value(rand_uniform_strong(-0.2, 1.2), 0, 1)
-    ctranslate = tf.math.abs(translate)
-    translate = 0.0
-
-  if not random_pad:
-    translate = 0.0
-  
-  if target_height < ishape[0]:
-    th = target_height
-    crop_y = rand_uniform_strong(-ctranslate, ctranslate)
-    translate_y = 0.0
-    if crop_y > 0.5:
-      translate_x, crop_y= -(crop_y - 0.5), 0.5
-    elif crop_y < -0.5:
-      translate_x, crop_y= -(crop_y + 0.5), -0.5
-
-  else:
-    th = ishape[0]
-    translate_y = rand_uniform_strong(-translate, translate)
-    crop_y = 0.0
-
-  if target_width < ishape[1]:
-    tw = target_width
-    crop_x = rand_uniform_strong(-ctranslate, ctranslate)
-    translate_x = 0.0
-    if crop_x > 0.5:
-      translate_y, crop_x= -(crop_x - 0.5), 0.5
-    elif crop_x < -0.5:
-      translate_y, crop_x= -(crop_x + 0.5), -0.5
-  else:
-    tw = ishape[1]
-    translate_x = rand_uniform_strong(-translate, translate)
-    crop_x = 0.0
-
-  #  window slice image:
+  th = target_height if target_height < ishape[0] else ishape[0]
+  tw = target_width if target_width < ishape[1] else ishape[1]
   crop_size = tf.convert_to_tensor([th, tw, -1])
+
   crop_offset = ishape - crop_size
-  shift = tf.convert_to_tensor([crop_y,crop_x,0])
-  shift = tf.cast(shift * tf.cast(crop_offset, shift.dtype), crop_offset.dtype)
   crop_offset = tf.convert_to_tensor([crop_offset[0]//2, crop_offset[1]//2, 0])
-  crop_offset += shift
+  shift = tf.convert_to_tensor([rand_uniform_strong(-translate, 
+                                                     translate, seed = seed), 
+                                rand_uniform_strong(-translate, 
+                                                     translate, seed = seed), 
+                                0])
+  crop_offset = crop_offset + tf.cast(shift * tf.cast(crop_offset, 
+                                                      shift.dtype), 
+                                                      crop_offset.dtype)
   image = tf.slice(image, crop_offset, crop_size)
   offset = tf.cast(crop_offset[:2], tf.float32)
 
   if pad:
-    # pad image: 
-    py = tf.cast(tf.cast(target_height - th, tf.float32) * shifty, tf.int32)
-    px = tf.cast(tf.cast(target_width - tw, tf.float32)  * shiftx, tf.int32)
-    image = tf.image.pad_to_bounding_box(image, py, px, target_height, target_width)
-    offset -= tf.cast([py, px], tf.float32)
-    th, tw = target_width, target_height
+    dy = (target_height - th)//2
+    dx = (target_width  - tw)//2
+    image = tf.image.pad_to_bounding_box(image, dy, dx,
+                                         target_height, 
+                                         target_height)
+    offset -= tf.cast([dy, dx], offset.dtype)
 
   oshape = tf.shape(image)
-  info_a = tf.stack([
+  info = tf.stack([
       tf.cast(ishape[:2], tf.float32),
       tf.cast(oshape[:2], tf.float32), 
       scale, 
       offset],axis=0)
 
-  # translate image 
-  mul = lambda x, y: tf.cast(tf.cast(x, y.dtype) * y, x.dtype)
-  ty = mul(tf.cast(target_height, tf.int32), translate_y)
-  tx = mul(tf.cast(target_width, tf.int32),  translate_x) 
-  image = tfa.image.translate(image, [ty, tx])
-  # offset -= tf.cast([tx, ty], tf.float32)
-  offset = -tf.cast([tx, ty], tf.float32)
+  return image, info
 
-  info_b = tf.stack([
-      tf.cast(oshape[:2], tf.float32),
-      tf.cast(oshape[:2], tf.float32), 
-      scale, 
-      offset],axis=0)
+def random_window_translate_image(image, 
+                                  desired_size, 
+                                  translate, 
+                                  seed = None):
+  desired_size = tf.cast(desired_size, tf.float32)
+  pad = tf.cast(translate * desired_size, tf.int32)
+  trans_size = tf.cast(desired_size, tf.int32) + 2 * pad
 
-  return image, [info_a, info_b]
+  padded_image, info_a = window(image, 
+                         trans_size[0], 
+                         trans_size[1], 
+                         translate=0.0, 
+                         pad = True, 
+                         seed = seed)
+  
+  trans_image, info_b = window(padded_image, 
+                         desired_size[0], 
+                         desired_size[1], 
+                         translate=1.0, 
+                         pad = False, 
+                         seed = seed)
 
-def resize_and_crop_image(image,
-                          desired_size,
-                          padded_size,
-                          letter_box=None,
-                          aug_scale_min=1.0,
-                          aug_scale_max=1.0,
-                          random_pad=False,
-                          shiftx=0.5,
-                          shifty=0.5,
-                          sheer=0.0,
-                          translate = 0.0, 
-                          seed=1,
-                          method=tf.image.ResizeMethod.BILINEAR):
-  """Resizes the input image to output size (RetinaNet style).
-  Resize and pad images given the desired output size of the image and
-  stride size.
-  Here are the preprocessing steps.
-  1. For a given image, keep its aspect ratio and rescale the image to make it
-     the largest rectangle to be bounded by the rectangle specified by the
-     `desired_size`.
-  2. Pad the rescaled image to the padded_size.
-  Args:
-    image: a `Tensor` of shape [height, width, 3] representing an image.
-    desired_size: a `Tensor` or `int` list/tuple of two elements representing
-      [height, width] of the desired actual output image size.
-    padded_size: a `Tensor` or `int` list/tuple of two elements representing
-      [height, width] of the padded output image size. Padding will be applied
-      after scaling the image to the desired_size.
-    aug_scale_min: a `float` with range between [0, 1.0] representing minimum
-      random scale applied to desired_size for training scale jittering.
-    aug_scale_max: a `float` with range between [1.0, inf] representing maximum
-      random scale applied to desired_size for training scale jittering.
-    seed: seed for random scale jittering.
-    method: function to resize input image to scaled image.
-  Returns:
-    output_image: `Tensor` of shape [height, width, 3] where [height, width]
-      equals to `output_size`.
-    image_info: a 2D `Tensor` that encodes the information of the image and the
-      applied preprocessing. It is in the format of
-      [[original_height, original_width], [desired_height, desired_width],
-       [y_scale, x_scale], [y_offset, x_offset]], where [desired_height,
-      desired_width] is the actual scaled image size, and [y_scale, x_scale] is
-      the scaling factor, which is the ratio of
-      scaled dimension / original dimension.
-  """
-  with tf.name_scope('resize_and_crop_image'):
+  return trans_image, [info_a, info_b]
 
-    if letter_box == False:
-      height, width = get_image_shape(image)
-      clipper = tf.reduce_max((height, width))
-      image = image = tf.image.resize(
-          image, (clipper, clipper), preserve_aspect_ratio=False)
-    elif letter_box == True:
-      height, width = get_image_shape(image)
-      clipper = tf.reduce_max((height, width))
-      w_scale = width / clipper
-      h_scale = height / clipper
+def random_scale_and_translate(image, 
+                               desired_size, 
+                               aug_scale_min=1.0,
+                               aug_scale_max=1.0,
+                               translate_min = 0.0,
+                               translate_max = 0.0,
+                               shiftx = 0.5, 
+                               shifty = 0.5, 
+                               random_pad = False, 
+                               letter_box = None, 
+                               sheer = 0.0, 
+                               seed = None, 
+                               center = False, 
+                               method=tf.image.ResizeMethod.BILINEAR):
+  
+  image = _image_distortion(image, desired_size, 
+                            letter_box = letter_box, 
+                            sheer = sheer, 
+                            seed = seed)
 
-      height_, width_ = desired_size[0], desired_size[1]
-      height_ = tf.cast(h_scale * tf.cast(height_, h_scale.dtype), tf.int32)
-      width_ = tf.cast(w_scale * tf.cast(width_, w_scale.dtype), tf.int32)
+  image_size = tf.cast(tf.shape(image)[0:2], tf.float32)
+  desired_size = tf.cast(desired_size, tf.int32)
 
-      image = image = tf.image.resize(
-        image, (height_, width_), preserve_aspect_ratio=False)
+  random_translate = translate_min != 0 or translate_max != 0 
+  random_jittering = (aug_scale_min != 1.0 or aug_scale_max != 1.0)
 
-    if sheer > 0.0: 
-      h_, w_ = get_image_shape(image)
+  if random_jittering:
+    random_scale = tf.random.uniform([],
+                                      aug_scale_min,
+                                      aug_scale_max,
+                                      seed=seed)
+    # scaled_size = tf.round(random_scale * image_size)
+    scaled_size = tf.round(random_scale * tf.cast(desired_size, tf.float32))
+  else:
+    random_scale = 1.0
+    scaled_size = tf.cast(desired_size, tf.float32)
 
-      hr = tf.cast(sheer * tf.cast(h_, tf.float32), tf.int32)
-      wr = tf.cast(sheer * tf.cast(w_, tf.float32), tf.int32)
+  scale = tf.minimum(scaled_size[0] / image_size[0],
+                     scaled_size[1] / image_size[1])
+  scaled_size = tf.round(image_size * scale)
 
-      h_ += rand_uniform_strong(-hr, hr + 1, tf.int32)
-      w_ += rand_uniform_strong(-wr, wr + 1, tf.int32)
-      image = tf.image.resize(image, (h_, w_))
+  # Computes 2D image_scale.
+  scaled_image = tf.image.resize(
+      image, tf.cast(scaled_size, tf.int32), method=method)
 
-    image_size = tf.cast(tf.shape(image)[0:2], tf.float32)
-    desired_size_ = tf.cast(desired_size, tf.float32)
-    random_jittering = (aug_scale_min != 1.0 or aug_scale_max != 1.0)
-
-    if random_jittering:
-      random_scale = tf.random.uniform([],
-                                       aug_scale_min,
-                                       aug_scale_max,
-                                       seed=seed)
-      scaled_size = tf.round(random_scale * image_size)
-      # scaled_size = tf.round(random_scale * desired_size_)
-    else:
-      random_scale = 1.0
-      scaled_size = desired_size
-
-    scale = tf.minimum(scaled_size[0] / image_size[0],
-                       scaled_size[1] / image_size[1])
-    scaled_size = tf.round(image_size * scale)
-
-    # Computes 2D image_scale.
+  if random_translate: 
+    t = tf.random.uniform([], 
+                                        translate_min, 
+                                        translate_max, 
+                                        seed=seed)
+    scaled_image, infos = random_window_translate_image(
+      scaled_image, 
+      desired_size, 
+      translate = t, 
+      seed = seed
+    )
+    image_scale = tf.ones_like(image_size)
+    image_size = desired_size
+  else: 
+    info = _get_identity_info(image)
+    infos = [info, info]
     image_scale = scaled_size / image_size
-    scaled_image = tf.image.resize(
-        image, tf.cast(scaled_size, tf.int32), method=method)
-
-    # Selects non-zero random offset (x, y) if scaled image is larger than
-    # desired_size.
-    output_image, infos = random_window_crop(
+  
+  if random_jittering and not random_translate:
+    scaled_image, info_a = window(
       scaled_image, 
       desired_size[0], 
       desired_size[1], 
-      shiftx = shiftx,
-      shifty = shifty, 
-      random_pad = random_pad, 
-      translate = translate
+      translate = 0.0 if center else 1.0, 
+      pad = False, 
+      seed = seed
     )
-    return output_image, infos
+    offset = tf.cast(info_a[-1, :], tf.int32)
+  else:
+    offset = tf.zeros((2,), tf.int32)
 
+  scaled_size = tf.cast(tf.shape(scaled_image)[0:2], tf.int32)
 
+  if random_pad:
+    pad = 0.5
+    shifty = 0.5 + rand_uniform_strong(-pad, pad, tf.float32, seed)
+    shiftx = 0.5 + rand_uniform_strong(-pad, pad, tf.float32, seed)
 
+  dy = tf.cast(
+      tf.cast(desired_size[0] - scaled_size[0], tf.float32) * shifty,
+      tf.int32)
+  dx = tf.cast(
+      tf.cast(desired_size[1] - scaled_size[1], tf.float32) * shiftx,
+      tf.int32)
 
+  output_image = tf.image.pad_to_bounding_box(scaled_image, dy, dx,
+                                              desired_size[0], desired_size[1])
+  offset -= tf.convert_to_tensor([dy, dx])
 
+  image_info = tf.stack([
+      tf.cast(image_size, tf.float32),
+      tf.cast(desired_size, dtype=tf.float32), 
+      tf.cast(image_scale, tf.float32),
+      tf.cast(offset, tf.float32)
+  ])
 
-
-
+  infos.append(image_info)
+  return output_image, infos
 
 
 def intersection(a, b):
@@ -630,6 +615,7 @@ def resize_and_jitter_image(image,
                             shiftx=0.0,
                             shifty=0.0,
                             cut = None,
+                            seed = None, 
                             method=tf.image.ResizeMethod.BILINEAR):
   """Resizes the input image to output size (RetinaNet style).
   Resize and pad images given the desired output size of the image and
@@ -696,16 +682,16 @@ def resize_and_jitter_image(image,
       min_rdw = ow * (1 - (1 / resize_down)) / 2
       min_rdh = oh * (1 - (1 / resize_down)) / 2
 
-    pleft = rand_uniform_strong(-dw, dw, dw.dtype)
-    pright = rand_uniform_strong(-dw, dw, dw.dtype)
-    ptop = rand_uniform_strong(-dh, dh, dh.dtype)
-    pbottom = rand_uniform_strong(-dh, dh, dh.dtype)
+    pleft = rand_uniform_strong(-dw, dw, dw.dtype, seed = seed)
+    pright = rand_uniform_strong(-dw, dw, dw.dtype, seed = seed)
+    ptop = rand_uniform_strong(-dh, dh, dh.dtype, seed = seed)
+    pbottom = rand_uniform_strong(-dh, dh, dh.dtype, seed = seed)
 
     if resize != 1:
-      pleft += rand_uniform_strong(min_rdw, max_rdw)
-      pright += rand_uniform_strong(min_rdw, max_rdw)
-      ptop += rand_uniform_strong(min_rdh, max_rdh)
-      pbottom += rand_uniform_strong(min_rdh, max_rdh)
+      pleft += rand_uniform_strong(min_rdw, max_rdw, seed = seed)
+      pright += rand_uniform_strong(min_rdw, max_rdw, seed = seed)
+      ptop += rand_uniform_strong(min_rdh, max_rdh, seed = seed)
+      pbottom += rand_uniform_strong(min_rdh, max_rdh, seed = seed)
 
     if letter_box:
       image_aspect_ratio = ow/oh 
@@ -858,7 +844,7 @@ def resize_and_crop_boxes(boxes,
   clipped_boxes = bbox_ops.clip_boxes(boxes, output_size)
   return clipped_boxes, boxes, box_history
 
-def apply_infos(boxes, infos, shuffle_boxes = True, area_thresh = 0.1):
+def apply_infos(boxes, infos, shuffle_boxes = True, area_thresh = 0.1, seed = None):
   # clip and clean boxes
   def get_valid_boxes(boxes, unclipped_boxes = None):
     """Get indices for non-empty boxes."""
@@ -939,7 +925,7 @@ def apply_infos(boxes, infos, shuffle_boxes = True, area_thresh = 0.1):
   # select and gather the good boxes 
   inds = bbox_ops.get_non_empty_box_indices(boxes)
   if shuffle_boxes:
-    inds = tf.random.shuffle(inds)
+    inds = tf.random.shuffle(inds, seed = seed)
   boxes = tf.gather(boxes, inds)
   return boxes, inds 
 

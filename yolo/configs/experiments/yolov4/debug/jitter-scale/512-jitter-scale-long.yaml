@@ -65,6 +65,7 @@ task:
     is_training: true
     shuffle_buffer_size: 10
     drop_remainder: true
+    seed: 1000
     parser:
       max_num_instances: 200
       letter_box: False
@@ -77,21 +78,18 @@ task:
       jitter_mosaic: 0.0
       resize_mosaic: 1.0
       sheer: 0.0
-      aug_scale_min: 0.2
-      aug_scale_max: 1.5
-      mosaic_scale_min: 0.4
-      mosaic_scale_max: 1.25
-      aug_rand_translate: 0.0
-      area_thresh: 0.2
+      aug_scale: [0.1, 1.8]
+      mosaic_scale: [0.3, 1.5]
+      center: True
+      area_thresh: 0.1
       random_pad: True
       use_tie_breaker: True
       use_scale_xy: False
       anchor_thresh: 0.213
       mosaic: 
-        output_resolution: [512, 512]
-        max_resolution: 640
-        mosaic_frequency: 0.7
-        crop_area: [0.25]
+        max_resolution: 720
+        mosaic_frequency: 0.75
+        crop_area: [0.20]
         mosaic_crop_mode: 'crop'
         aspect_ratio_mode: 'distort'
   validation_data:

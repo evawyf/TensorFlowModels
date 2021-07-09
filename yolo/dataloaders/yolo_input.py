@@ -7,7 +7,7 @@ into (image, labels) tuple for RetinaNet.
 import tensorflow as tf
 import tensorflow_addons as tfa
 
-from yolo.ops import preprocessing_ops
+from yolo.ops import mosaic, preprocessing_ops
 from yolo.ops import box_ops as box_utils
 from official.vision.beta.ops import box_ops, preprocess_ops
 from official.vision.beta.dataloaders import parser, utils
@@ -44,30 +44,34 @@ class Parser(parser.Parser):
                resize=1.0,
                resize_mosaic = 1.0, 
                sheer=0.0, 
-
-               area_thresh = 0.1, 
-               max_num_instances=200,
-
                aug_rand_angle=0.0, 
-               aug_rand_transalate=0.0,
+
                aug_rand_saturation=1.0,
                aug_rand_brightness=1.0,
                aug_rand_hue=1.0,
+
+               aug_scale=[1.0, 1.0], 
+               mosaic_scale=[1.0, 1.0],
+               rand_translate=[0.0, 0.0],
+               mosaic_translate=[0.0, 0.0],  
+
                random_pad=True,
-               
-               aug_scale_min=1.0,
-               aug_scale_max=1.0,
-               mosaic_min = 1.0, 
-               mosaic_max = 1.0, 
-               
+               center = False, 
+
+               letter_box=False,
+               random_flip=True,
+
+               area_thresh = 0.1, 
+               max_num_instances=200,
                anchor_t=4.0,
+
                scale_xy=None,
                use_scale_xy=False,
                masks=None,
                anchors=None,
-               letter_box=False,
-               random_flip=True,
+
                use_tie_breaker=True,
+               seed = None, 
                dtype='float32'):
     """Initializes parameters for parsing annotations in the dataset.
     Args:
@@ -146,25 +150,25 @@ class Parser(parser.Parser):
     self._use_tie_breaker = use_tie_breaker
     self._max_num_instances = max_num_instances
 
-
     # image scaling params
     self._jitter = 0.0 if jitter is None else jitter
     self._resize = 1.0 if resize is None else resize
-    self._aug_scale_min = aug_scale_min
-    self._aug_scale_max = aug_scale_max
+    self._aug_scale = aug_scale
+    self._rand_translate = rand_translate
 
     # mosaic scaling params
     self._jitter_mosaic = 0.0 if jitter_mosaic is None else jitter_mosaic
     self._resize_mosaic = 0.0 if resize_mosaic is None else resize_mosaic
-    self._mosaic_min = mosaic_min
-    self._mosaic_max = mosaic_max
+    self._mosaic_scale = mosaic_scale
+    self._mosaic_translate = mosaic_translate
+    self._center = center
 
     # image spatial distortion
     self._random_flip = random_flip
     self._letter_box = letter_box
     self._random_pad = random_pad
     self._aug_rand_angle = aug_rand_angle
-    self._aug_rand_translate = aug_rand_transalate
+    
 
     # color space distortion of the image
     self._aug_rand_saturation = aug_rand_saturation
@@ -181,6 +185,9 @@ class Parser(parser.Parser):
         key: int(self._anchor_t + len(keys) - i) for i, key in enumerate(keys)
     } if self._use_scale_xy else {key: 1 for key in keys}
     self._area_thresh = area_thresh
+
+    # rand params
+    self._seed = seed 
 
     # set the data type based on input string
     if dtype == 'float16':
@@ -263,7 +270,9 @@ class Parser(parser.Parser):
                     random_pad, 
                     aug_scale_min, 
                     aug_scale_max, 
-                    translate):
+                    translate_min, 
+                    translate_max, 
+                    center = False):
     if (aug_scale_min != 1.0 or aug_scale_max != 1.0):
       crop_only = True 
       letter_box_ = None 
@@ -284,18 +293,21 @@ class Parser(parser.Parser):
         jitter=jitter,
         resize=resize,
         crop_only=crop_only,
-        random_pad=random_pad)
+        random_pad=random_pad, 
+        seed=self._seed)
     infos.extend(info_a)
-    image, info_b = preprocessing_ops.resize_and_crop_image(
+    image, info_b = preprocessing_ops.random_scale_and_translate(
         image,
-        shape, 
         shape, 
         letter_box=letter_box_,
         sheer = sheer, 
         aug_scale_min=aug_scale_min,
         aug_scale_max=aug_scale_max,
-        translate=translate,
-        random_pad=random_pad)
+        translate_min=translate_min,
+        translate_max=translate_max,
+        random_pad=random_pad, 
+        center=center,
+        seed=self._seed)
     infos.extend(info_b)
 
     stale_a = self._get_identity_info(image)
@@ -326,9 +338,10 @@ class Parser(parser.Parser):
         self._resize, 
         self._sheer, 
         self._random_pad, 
-        self._aug_scale_min, 
-        self._aug_scale_max, 
-        self._aug_rand_translate
+        self._aug_scale[0], 
+        self._aug_scale[1], 
+        self._rand_translate[0],
+        self._rand_translate[1]
       )
     else:
       image, infos = self._jitter_scale(
@@ -339,15 +352,18 @@ class Parser(parser.Parser):
         self._resize_mosaic, 
         self._sheer, 
         self._random_pad, 
-        self._mosaic_min, 
-        self._mosaic_max, 
-        self._aug_rand_translate
+        self._mosaic_scale[0], 
+        self._mosaic_scale[1], 
+        self._mosaic_translate[0],
+        self._mosaic_translate[1], 
+        center = self._center
       )
 
     # clip and clean boxes
     boxes, inds = preprocessing_ops.apply_infos(boxes, 
                                                 infos, 
-                                                area_thresh = self._area_thresh)
+                                                area_thresh = self._area_thresh, 
+                                                seed=self._seed)
     classes = tf.gather(classes, inds)
     info = infos[-1]
 
@@ -355,7 +371,7 @@ class Parser(parser.Parser):
     if self._aug_rand_angle > 0:
       # apply rotation to the images
       image, angle = preprocessing_ops.random_rotate_image(
-          image, self._aug_rand_angle)
+          image, self._aug_rand_angle, seed=self._seed)
       boxes = preprocessing_ops.rotate_boxes(boxes, angle)
 
     image = tf.image.resize(
@@ -381,13 +397,16 @@ class Parser(parser.Parser):
     num_dets = tf.shape(classes)[0]
     if self._aug_rand_hue > 0.0:
       delta = preprocessing_ops.rand_uniform_strong(-self._aug_rand_hue,
-                                                    self._aug_rand_hue)
+                                                    self._aug_rand_hue, 
+                                                    seed=self._seed)
       image = tf.image.adjust_hue(image, delta)
     if self._aug_rand_saturation > 0.0:
-      delta = preprocessing_ops.rand_scale(self._aug_rand_saturation)
+      delta = preprocessing_ops.rand_scale(self._aug_rand_saturation, 
+                                           seed=self._seed)
       image = tf.image.adjust_saturation(image, delta)
     if self._aug_rand_brightness > 0.0:
-      delta = preprocessing_ops.rand_scale(self._aug_rand_brightness)
+      delta = preprocessing_ops.rand_scale(self._aug_rand_brightness, 
+                                           seed=self._seed)
       image *= delta
     # clip the values of the image between 0.0 and 1.0
     image = tf.clip_by_value(image, 0.0, 1.0)
@@ -411,22 +430,23 @@ class Parser(parser.Parser):
     if self._letter_box == False:
       image = tf.image.resize(image, [self._image_h, self._image_w])
 
-    image, infos = preprocessing_ops.resize_and_crop_image(
+    image, infos = preprocessing_ops.random_scale_and_translate(
         image,
-        [self._image_h, self._image_w],
         [self._image_h, self._image_w],
         letter_box=self._letter_box,
         aug_scale_min=1.0,
         aug_scale_max=1.0,
         random_pad=False,
         shiftx=0.5,
-        shifty=0.5)
+        shifty=0.5, 
+        seed=self._seed)
 
     # clip and clean boxes
     boxes, inds = preprocessing_ops.apply_infos(boxes, 
                                                 infos,
                                                 shuffle_boxes = False, 
-                                                area_thresh = self._area_thresh)
+                                                area_thresh = self._area_thresh, 
+                                                seed=self._seed)
     classes = tf.gather(classes, inds)
     info = infos[-1]
 
