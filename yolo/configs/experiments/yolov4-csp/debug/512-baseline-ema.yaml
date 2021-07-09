@@ -62,7 +62,7 @@ task:
     is_training: true
     shuffle_buffer_size: 10000
     drop_remainder: true
-    seed: 18000000
+    seed: null
     parser:
       max_num_instances: 200
       letter_box: True
@@ -83,7 +83,7 @@ task:
         mosaic_crop_mode: 'scale'
         aspect_ratio_mode: 'letter'
         crop_area_mosaic: [0.3, 3.8]
-        scale_translate: [0.1, 0.4]
+        scale_translate: [0.1, 0.6]
   validation_data:
     global_batch_size: 8
     dtype: float16

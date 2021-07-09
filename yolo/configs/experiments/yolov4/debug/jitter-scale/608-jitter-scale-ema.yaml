@@ -65,7 +65,7 @@ task:
     is_training: true
     shuffle_buffer_size: 10
     drop_remainder: true
-    seed: 1000
+    seed: null
     parser:
       max_num_instances: 200
       letter_box: False
