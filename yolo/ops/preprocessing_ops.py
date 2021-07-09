@@ -514,8 +514,9 @@ def random_scale_and_translate(image,
 
   if random_pad:
     pad = 0.5
-    shifty = 0.5 + rand_uniform_strong(-pad, pad, tf.float32, seed)
-    shiftx = 0.5 + rand_uniform_strong(-pad, pad, tf.float32, seed)
+    shifty = 0.5 + rand_uniform_strong(-pad, pad, seed = seed)
+    shiftx = 0.5 + rand_uniform_strong(-pad, pad, seed = seed)
+    tf.print(shiftx, shifty)
 
   dy = tf.cast(
       tf.cast(desired_size[0] - scaled_size[0], tf.float32) * shifty,
