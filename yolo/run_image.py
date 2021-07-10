@@ -33,7 +33,7 @@ except BaseException:
 python3.8 -m yolo.run_image
 """
 
-
+from skimage import io
 def url_to_image(url):
   image = io.imread(url)
   return image

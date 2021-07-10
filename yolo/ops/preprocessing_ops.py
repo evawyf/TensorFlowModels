@@ -1,5 +1,6 @@
 from random import random
 from numpy import float32
+import numpy as np
 from numpy.core.fromnumeric import resize
 import tensorflow as tf
 from tensorflow.python.ops.gen_array_ops import zeros_like
@@ -212,6 +213,20 @@ def get_corners(boxes):
   corners = tf.concat([tl, bl, tr, br], axis=-1)
   return corners
 
+def corners_to_boxes(corners):
+  corners_ = tf.reshape(corners, [-1, 4, 2])
+
+  y = corners_[..., 1]
+  x = corners_[..., 0]
+
+  y_min = tf.reduce_min(y, axis = -1)
+  x_min = tf.reduce_min(x, axis = -1)
+  y_max = tf.reduce_max(y, axis = -1)
+  x_max = tf.reduce_max(x, axis = -1)
+
+  boxes = tf.stack([y_min, x_min, y_max, x_max], axis = -1)
+  return boxes
+
 
 def rotate_points(x_, y_, angle):
   """
@@ -273,6 +288,168 @@ def rotate_boxes(boxes, angle):
 
   boxes = tf.concat([ymin, xmin, ymax, xmax], axis=-1)
   return boxes
+
+def deg_to_rad(angle):
+    return tf.cast(angle, tf.float32) * np.pi/180.0
+
+def build_transform(image, 
+                    perspective = 0.00, 
+                    degrees = 0.0, 
+                    scale = 0.0, 
+                    shear = 0.0, 
+                    translate = 0.0, 
+                    random_pad = False,
+                    desired_size = None, 
+                    seed = 0):
+    # height = tf.cast(tf.shape(image)[0], tf.float32)  # shape(h,w,c)
+    # width = tf.cast(tf.shape(image)[1], tf.float32)
+    height, width = tf.cast(get_image_shape(image), tf.float32)
+
+    ch = height 
+    cw = width 
+    if desired_size is not None:
+        desired_size = tf.cast(desired_size, tf.float32) 
+        ch = desired_size[0]
+        cw = desired_size[1]
+
+    C = tf.eye(3, dtype = tf.float32)
+    C = tf.tensor_scatter_nd_update(C, [[0, 2], [1, 2]], [-cw/2, -ch/2])
+    Cb = tf.tensor_scatter_nd_update(C, [[0, 2], [1, 2]], [cw/2, ch/2])
+
+    R = tf.eye(3, dtype = tf.float32)
+    a = deg_to_rad(tf.random.uniform([], -degrees, degrees, seed = seed))
+    cos = tf.math.cos(a)
+    sin = tf.math.sin(a)
+    R = tf.tensor_scatter_nd_update(R, [[0, 0], [0, 1], [1, 0], [1, 1]], [cos, -sin, 
+                                                                          sin, cos])
+    Rb = tf.tensor_scatter_nd_update(R, [[0, 0], [0, 1], [1, 0], [1, 1]], [cos, sin, 
+                                                                          -sin, cos])
+
+    P = tf.eye(3)
+    Px = tf.random.uniform([], -perspective, perspective, seed = seed)  # x perspective (about y)
+    Py = tf.random.uniform([], -perspective, perspective, seed = seed)  # y perspective (about x)
+    P = tf.tensor_scatter_nd_update(P, [[2, 0], [2, 1]], [Px, Py])
+    Pb = tf.tensor_scatter_nd_update(P, [[2, 0], [2, 1]], [-Px, -Py])
+
+    S = tf.eye(3, dtype = tf.float32)
+    s = tf.random.uniform([], 1 - scale, 1 + scale, seed = seed)
+    S = tf.tensor_scatter_nd_update(S, [[0, 0], [1, 1]], [1/s, 1/s])
+    Sb = tf.tensor_scatter_nd_update(S, [[0, 0], [1, 1]], [s, s])
+
+    # SH = tf.eye(3)
+    # Sx = tf.tan(deg_to_rad(tf.random.uniform([], -shear, shear, seed = seed)))  # x shear (deg)
+    # Sy = tf.tan(deg_to_rad(tf.random.uniform([], -shear, shear, seed = seed)))  # y shear (deg)
+    # SH = tf.tensor_scatter_nd_update(SH, [[0, 1], [1, 0]], [Sx, Sy])
+    # SHb = tf.tensor_scatter_nd_update(SH, [[0, 1], [1, 0]], [-Sx, -Sy])
+
+    T = tf.eye(3)
+    if random_pad and s < 1.0 and s * width < cw and s * height < ch:
+        C = Cb = tf.eye(3, dtype = tf.float32)
+        Tx = tf.random.uniform([], -1, 0, seed = seed) * (cw/s - width) # x translation (pixels)
+        Ty = tf.random.uniform([], -1, 0, seed = seed) * (ch/s - height)# y translation (pixels)
+    else:
+        Tx = tf.random.uniform([], 0.5 - translate, 0.5 + translate, seed = seed) * width  # x translation (pixels)
+        Ty = tf.random.uniform([], 0.5 - translate, 0.5 + translate, seed = seed) * height  # y translation (pixels)
+    T = tf.tensor_scatter_nd_update(T, [[0, 2], [1, 2]], [Tx, Ty])
+    Tb = tf.tensor_scatter_nd_update(T, [[0, 2], [1, 2]], [-Tx, -Ty])
+
+    M = T @ S @ R  @ C @ P 
+    Mb =  Pb @ Cb @ Rb @ Sb @ Tb 
+
+    # M = T @ SH @ S @ R  @ C @ P 
+    # Mb =  Pb @ Cb @ Rb @ Sb @ SHb @ Tb 
+    return M, Mb
+
+def affine_warp_image(image, 
+                      desired_size, 
+                      perspective = 0.00, 
+                      degrees = 0.0, 
+                      scale = 0.0, 
+                      shear = 0.0, 
+                      translate = 0.0,
+                      random_pad = False,
+                      seed = 0):
+    M_, Mb = build_transform(image, 
+                        perspective = perspective, 
+                        degrees = degrees, 
+                        scale = scale, 
+                        shear = shear, 
+                        translate = translate,
+                        random_pad = random_pad, 
+                        desired_size = desired_size,
+                        seed = seed)
+    M = tf.reshape(M_, [-1])
+    M = tf.cast(M[:-1], tf.float32)
+    image = tfa.image.transform(image, M, fill_value=114, output_shape=desired_size)
+    return image, M_, Mb
+
+
+def aug_boxes(Mb, boxes):
+  M = Mb
+  corners = get_corners(boxes)
+  corners = tf.reshape(corners, [-1, 4, 2])
+  z = tf.expand_dims(tf.ones_like(corners[..., 1]), axis = -1)
+  corners = tf.concat([corners, z], axis = -1)
+
+  corners = tf.transpose(tf.matmul(M, corners, transpose_b=True), perm=(0, 2, 1))
+
+  corners, p = tf.split(corners, [2, 1], axis = -1)
+  corners /= p
+  corners = tf.reshape(corners, [-1, 8])
+  boxes = corners_to_boxes(corners)
+
+  # n = tf.shape(boxes)[0]
+
+  # boxes = tf.stack([
+  #   boxes[..., 1], 
+  #   boxes[..., 0], 
+  #   boxes[..., 3], 
+  #   boxes[..., 2], 
+  # ], axis = -1)
+
+  # xy = tf.stack([boxes[..., 0], 
+  #                boxes[..., 1], 
+  #                boxes[..., 2], 
+  #                boxes[..., 3], 
+                 
+  #                boxes[..., 0], 
+  #                boxes[..., 3], 
+  #                boxes[..., 2], 
+  #                boxes[..., 1]], axis = -1)
+  # xy = tf.reshape(xy, [4 * n, 2])
+  # z = tf.ones([4 * n, 1])
+
+  # xy = tf.concat([xy, z], axis = -1)
+
+  # xy = tf.matmul(xy, M, transpose_b=True)
+  # xy, p = tf.split(xy, [2, 1], axis = -1)
+  # xy = tf.reshape(xy/p, [n, 8])
+
+  # boxes = box_ops.yxyx_to_xcycwh(corners_to_boxes(xy))
+  # boxes = box_ops.xcycwh_to_yxyx(boxes) 
+  
+  # tf.print(tf.shape(xy), xy)
+
+  return boxes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def random_crop_image(image,
