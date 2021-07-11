@@ -156,7 +156,7 @@ def write_to_folder(path = "/media/vbanna/DATA_SHARE/CV/datasets/COCO_raw/testin
     )
     boxes = sample["groundtruth_boxes"] 
     boxes = box_ops.denormalize_boxes(boxes, tf.shape(image_)[:2])
-    boxes = preprocessing_ops.aug_boxes(Mb, boxes)
+    boxes, _, _ = preprocessing_ops.affine_warp_boxes(Mb[0], boxes, Mb[1])
     boxes = box_ops.normalize_boxes(boxes, tf.shape(image)[:2])
     image = tf.expand_dims(image, axis = 0)
     boxes = tf.expand_dims(boxes, axis = 0)
@@ -175,3 +175,5 @@ def write_to_folder(path = "/media/vbanna/DATA_SHARE/CV/datasets/COCO_raw/testin
 
 if __name__ == "__main__":
   write_to_folder()
+        
+         

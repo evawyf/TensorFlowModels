@@ -127,9 +127,8 @@ class Mosaic(hyperparams.Config):
     default_factory=lambda: [0.25, 1.0])
   crop_area_mosaic: List[float] = dataclasses.field(
     default_factory=lambda: [1.0, 1.0])
-  scale_translate: List[float] = dataclasses.field(
-    default_factory=lambda: [0.5, 0.5])
-  aspect_ratio_mode: str = 'crop'
+  scale_translate: float = 0.0
+  aspect_ratio_mode: str = 'letter'
   mosaic_crop_mode: Optional[str] = 'scale'
   jitter: Optional[float] = None
   resize: Optional[float] = None
@@ -156,11 +155,10 @@ class Parser(hyperparams.Config):
     default_factory=lambda: [1.0, 1.0])
   mosaic_scale: List[float] = dataclasses.field(
     default_factory=lambda: [1.0, 1.0])
-  rand_translate: List[float] = dataclasses.field(
-    default_factory=lambda: [0.0, 0.0])
-  mosaic_translate: List[float] = dataclasses.field(
-    default_factory=lambda: [0.0, 0.0])
-  center: bool = False
+  rand_translate: float = 0.0
+  mosaic_translate: float = 0.0
+  rand_perspective: float = 0.0
+  mosaic_perspective: float = 0.0
 
   aug_rand_angle: float = 0.0
   use_tie_breaker: bool = True

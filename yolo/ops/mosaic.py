@@ -26,7 +26,7 @@ class Mosaic(object):
                random_flip=True,
                crop_area=[0.5, 1.0],
                crop_area_mosaic=[0.5, 1.0],
-               scale_translate =[0.5, 0.5], 
+               scale_translate = 0.0, 
                area_thresh = 0.1, 
                seed=None):
 
@@ -182,31 +182,31 @@ class Mosaic(object):
 
   def _mosaic_crop_image(self, image, boxes, classes, is_crowd, area):
     if self._mosaic_crop_mode == "scale":
-      image, infos = preprocessing_ops.random_scale_and_translate(
+      image, _, affine = preprocessing_ops.affine_warp_image(
           image,
           [self._output_size[0], self._output_size[1]],
-          aug_scale_min=self._crop_area_mosaic[0],
-          aug_scale_max=self._crop_area_mosaic[1], 
-          translate_min=self._scale_translate[0] ,
-          translate_max=self._scale_translate[1],
-          letter_box = None, 
-          sheer = 0.0, 
+          scale_min = self._crop_area_mosaic[0],
+          scale_max = self._crop_area_mosaic[1], 
+          translate = self._scale_translate,
           seed=self._seed)
       height, width = self._output_size[0], self._output_size[1]
       image = tf.image.resize(image, (height, width))
+      infos = None
     else:
       height, width = self._output_size[0], self._output_size[1]
       image = tf.image.resize(image, (height, width))
       image, infos = self._mosaic_crop(image, self._crop_area)
+      affine = None
 
     # clip and clean boxes
     boxes, inds = preprocessing_ops.apply_infos(boxes, 
                                                 infos, 
+                                                affine = affine,
                                                 area_thresh = self._area_thresh)
     classes = tf.gather(classes, inds)
     is_crowd = tf.gather(is_crowd, inds)
     area = tf.gather(area, inds)
-    return image, boxes, classes, is_crowd, area, infos[-1]
+    return image, boxes, classes, is_crowd, area, area
 
   def scale_boxes(self, patch, ishape, boxes, classes, xs, ys):
     xs = tf.cast(xs, boxes.dtype)
@@ -456,7 +456,7 @@ class Mosaic(object):
     return dataset.map(self._add_param, num_parallel_calls=tf.data.AUTOTUNE)
 
   def mosaic_fn(self, is_training=True):
-    if (is_training and self._mosaic_frequency == 1.0):
+    if (is_training and self._mosaic_frequency >= 1.0):
       return self._full_frequency_apply
     elif is_training and self._mosaic_frequency > 0.0:
       return self._apply

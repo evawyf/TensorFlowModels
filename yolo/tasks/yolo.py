@@ -192,9 +192,10 @@ class YoloTask(base_task.Task):
         mosaic_scale = params.parser.mosaic_scale,
         rand_translate=params.parser.rand_translate,
         mosaic_translate = params.parser.mosaic_translate,
+        rand_perspective=params.parser.rand_perspective,
+        mosaic_perspective = params.parser.mosaic_perspective,
 
         random_pad=params.parser.random_pad,
-        center=params.parser.center,
 
         letter_box=params.parser.letter_box,
         random_flip=params.parser.random_flip,
