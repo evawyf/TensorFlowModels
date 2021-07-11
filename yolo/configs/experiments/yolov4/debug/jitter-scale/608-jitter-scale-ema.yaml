@@ -78,14 +78,17 @@ task:
       jitter_mosaic: 0.0
       resize_mosaic: 1.0
       sheer: 0.0
-      aug_scale: [0.1, 1.8]
+      aug_scale: [0.1, 1.6]
       mosaic_scale: [0.3, 1.5]
-      center: True
       area_thresh: 0.1
       random_pad: True
       use_tie_breaker: True
       use_scale_xy: False
       anchor_thresh: 0.213
+      aug_rand_angle: 0.0
+      rand_translate: 0.1
+      rand_perspective: 0.0
+      mosaic_perspective: 0.0
       mosaic: 
         max_resolution: 720
         mosaic_frequency: 0.75
@@ -119,8 +122,8 @@ trainer:
   optimizer_config:
     ema:
       average_decay: 0.9999
-      trainable_weights_only: false
       dynamic_decay: True
+      trainable_weights_only: True
     learning_rate:
       type: stepwise
       stepwise:

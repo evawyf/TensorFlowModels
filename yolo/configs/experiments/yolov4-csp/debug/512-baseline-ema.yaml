@@ -83,7 +83,7 @@ task:
         mosaic_crop_mode: 'scale'
         aspect_ratio_mode: 'letter'
         crop_area_mosaic: [0.1, 1.9]
-        scale_translate: 0.3
+        scale_translate: 0.1
   validation_data:
     global_batch_size: 8
     dtype: float16

@@ -22,7 +22,7 @@ task:
             '[142.0, 110.0]', 
             '[192.0, 243.0]', 
             '[459.0, 401.0]']
-    input_size: [512, 512, 3]
+    input_size: [608, 608, 3]
     boxes_per_scale: 3
     max_level: 5
     min_level: 3
@@ -65,7 +65,7 @@ task:
     is_training: true
     shuffle_buffer_size: 10
     drop_remainder: true
-    seed: 1000
+    seed: null
     parser:
       max_num_instances: 200
       letter_box: False
@@ -78,14 +78,17 @@ task:
       jitter_mosaic: 0.0
       resize_mosaic: 1.0
       sheer: 0.0
-      aug_scale: [0.1, 1.8]
+      aug_scale: [0.1, 1.6]
       mosaic_scale: [0.3, 1.5]
-      center: True
       area_thresh: 0.1
       random_pad: True
       use_tie_breaker: True
       use_scale_xy: False
       anchor_thresh: 0.213
+      aug_rand_angle: 0.0
+      rand_translate: 0.1
+      rand_perspective: 0.0
+      mosaic_perspective: 0.0
       mosaic: 
         max_resolution: 720
         mosaic_frequency: 0.75
@@ -110,7 +113,7 @@ task:
   init_checkpoint_modules: 'backbone'
   annotation_file: null
 trainer:
-  train_steps: 500000 # 160 epochs at 64 batchsize -> 500500 * 64/2
+  train_steps: 375000 # 160 epochs at 64 batchsize -> 500500 * 64/2
   validation_steps: 625
   steps_per_loop: 10000
   summary_interval: 10000
@@ -120,7 +123,7 @@ trainer:
     learning_rate:
       type: stepwise
       stepwise:
-        boundaries: [400000, 450000]
+        boundaries: [300000, 337500]
         name: PiecewiseConstantDecay
         values: [0.00131, 0.000131, 0.0000131] #best
     optimizer:
