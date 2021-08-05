@@ -595,9 +595,17 @@ class YoloTask(base_task.Task):
       logging.info('Finished loading pretrained checkpoint from %s',
                    ckpt_dir_or_file)
 
-  # @classmethod
-  # def create_optimizer(cls, optimizer_config: OptimizationConfig,
-  #                      runtime_config: Optional[RuntimeConfig] = None):
+  def _wrap_optimizer(self, optimizer, runtime_config):
+    if runtime_config and runtime_config.loss_scale:
+      use_float16 = runtime_config.mixed_precision_dtype == "float16"
+      use_float16 = (use_float16 
+                          or self._task_config.model.filter.use_scaled_loss)
+      optimizer = performance.configure_optimizer(
+          optimizer,
+          use_graph_rewrite=False,
+          use_float16=use_float16,
+          loss_scale=runtime_config.loss_scale)
+    return optimizer
 
   def create_optimizer(self, optimizer_config: OptimizationConfig,
                        runtime_config: Optional[RuntimeConfig] = None):
@@ -611,27 +619,35 @@ class YoloTask(base_task.Task):
       A tf.optimizers.Optimizer object.
     """
     opt_factory = optimization.YoloOptimizerFactory(optimizer_config)
+    ema = opt_factory._use_ema
+    opt_factory._use_ema = False
 
     if (self._task_config.smart_bias_lr > 0.0):
-      ema = opt_factory._use_ema
-      opt_factory._use_ema = False
+
       optimizer_weights = opt_factory.build_optimizer(opt_factory.build_learning_rate())
       optimizer_others = opt_factory.build_optimizer(opt_factory.build_learning_rate())
       optimizer_biases = opt_factory.build_optimizer(opt_factory.get_bias_lr_schedule(self._task_config.smart_bias_lr))
 
+      # optimizer_weights = self._wrap_optimizer(optimizer_weights, runtime_config)
+      # optimizer_others = self._wrap_optimizer(optimizer_others, runtime_config)
+      # optimizer_biases = self._wrap_optimizer(optimizer_biases, runtime_config)
+
       optimizer_weights.name = "weights_lr"
       optimizer_others.name = "others_lr"
       optimizer_biases.name = "bias_lr"
+
       weights, bias, other = self._model.get_weight_groups(self._model.trainable_variables)
       optimizer = CompositeOptimizer(
         [(optimizer_weights, lambda:weights),
         (optimizer_biases, lambda:bias),
         (optimizer_others, lambda:other)]
       )
-      opt_factory._use_ema = ema
-      optimizer = opt_factory.add_ema(optimizer)
+      optimizer = self._wrap_optimizer(optimizer, runtime_config)
     else:
       optimizer = opt_factory.build_optimizer(opt_factory.build_learning_rate())
-
+      optimizer = self._wrap_optimizer(optimizer, runtime_config)
+    
+    opt_factory._use_ema = ema
+    optimizer = opt_factory.add_ema(optimizer)
     print(optimizer)
     return optimizer

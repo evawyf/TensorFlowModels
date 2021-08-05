@@ -80,7 +80,7 @@ class ExponentialMovingAverage(tf.keras.optimizers.Optimizer):
     self._start_step = tf.constant(start_step, tf.float32)
     self._dynamic_decay = dynamic_decay
     self._optimizer = optimizer
-    self._track_trackable(self._optimizer, 'base_optimizer')
+    self._track_trackable(self._optimizer, 'base__optimizer')
     self._average_weights = None
     self._model_weights = None
 
@@ -92,7 +92,7 @@ class ExponentialMovingAverage(tf.keras.optimizers.Optimizer):
     else:
       self._model_weights = model.variables
     for var in self._model_weights:
-      self.add_slot(var, 'average', initializer='zeros')
+      self.add_slot(var, 'average', initializer=var)
 
     self._average_weights = [
         self.get_slot(var, 'average') for var in self._model_weights
@@ -114,36 +114,18 @@ class ExponentialMovingAverage(tf.keras.optimizers.Optimizer):
   @tf.function
   def update_average(self, step: tf.Tensor):
     
-    # step = tf.cast(step, tf.float32)
-    # if step < self._start_step:
-    #   decay = tf.constant(0., tf.float32)
-    # elif self._dynamic_decay:
-    #   decay = step - self._start_step
-    #   decay = tf.minimum(self._average_decay, (1. + decay) / (10. + decay))
-    # else:
-    #   decay = self._average_decay
-
-    # def _apply_moving(v_moving, v_normal):
-    #   diff = v_moving - v_normal
-    #   v_moving.assign_sub(tf.cast(1. - decay, v_moving.dtype) * diff)
-    #   return v_moving
-
-    # def _update(strategy, v_moving_and_v_normal):
-    #   for v_moving, v_normal in v_moving_and_v_normal:
-    #     strategy.extended.update(v_moving, _apply_moving, args=(v_normal,))
-
     step = tf.cast(step, tf.float32)
     if step < self._start_step:
       decay = tf.constant(0., tf.float32)
     elif self._dynamic_decay:
-      comp_step = step - self._start_step
-      decay = self._average_decay * (1 - tf.math.exp(-comp_step / 2000))
+      decay = step - self._start_step
+      decay = tf.minimum(self._average_decay, (1. + decay) / (10. + decay))
     else:
       decay = self._average_decay
 
     def _apply_moving(v_moving, v_normal):
-      new = v_moving * decay + v_normal * (1 - decay)
-      v_moving.assign(new)
+      diff = v_moving - v_normal
+      v_moving.assign_sub(tf.cast(1. - decay, v_moving.dtype) * diff)
       return v_moving
 
     def _update(strategy, v_moving_and_v_normal):
