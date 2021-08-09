@@ -358,8 +358,8 @@ def aggregated_comparitive_iou(boxes1, boxes2=None, iou_type=0, beta=0.6):
     _, iou = compute_giou(boxes1, boxes2, yxyx=True)
   elif iou_type == 2 or iou_type == "ciou":  #ciou
     _, iou = compute_ciou(boxes1, boxes2, yxyx=True)
-  elif iou_type == 4 or iou_type == "distance":  #ciou
-    iou = distance(boxes1, boxes2, yxyx=True)
+  # elif iou_type == 4 or iou_type == "distance":  #ciou
+  #   iou = distance(boxes1, boxes2, yxyx=True)
   else:
     iou = compute_iou(boxes1, boxes2, yxyx=True)
   return iou

@@ -53,6 +53,7 @@ class YoloHead(tf.keras.layers.Layer):
 
     self._output_conv = (classes + output_extras + 5) * boxes_per_level
     self._smart_bias = smart_bias
+    self._kernel_initializer = kernel_initializer
 
     self._base_config = dict(
         activation=activation,
@@ -74,7 +75,7 @@ class YoloHead(tf.keras.layers.Layer):
   def bias_init(self, scale, isize=640, no_per_conf=8):
 
     def bias(shape, dtype):
-      init = tf.keras.initializers.GlorotUniform(seed=None)
+      init = tf.keras.initializers.get(self._kernel_initializer)
 
       base = init(shape) #tf.zeros(shape, dtype=dtype)
       base = tf.reshape(base, [self._boxes_per_level, -1])
