@@ -268,9 +268,9 @@ def compute_ciou(box1, box2, yxyx=False, darknet=False):
     # aspect ration weight 
     a = tf.stop_gradient(math_ops.divide_no_nan(v, ((1 - iou) + v)))
 
-    # if darknet:
-    #   grad_scale = tf.stop_gradient(tf.square(b2w) + tf.square(b2h))
-    #   v *= grad_scale
+    if darknet:
+      grad_scale = tf.stop_gradient(tf.square(b2w) + tf.square(b2h))
+      v *= grad_scale
     
     ciou = iou - regularization - (v * a)
   return iou, ciou
@@ -420,3 +420,63 @@ def bbox_iou(box1, box2, x1y1x2y2=False, GIoU=False, DIoU=False, CIoU=False, EIo
             return iou - (c_area - union) / c_area  # GIoU
     else:
         return iou  # IoU
+
+
+
+def compute_ciou2(gt, pred, yxyx=False, darknet=False):
+  """Calculates the complete intersection over union between box1 and box2.
+
+  Args:
+    box1: any `Tensor` whose last dimension is 4 representing the coordinates of 
+      boxes.
+    box2: any `Tensor` whose last dimension is 4 representing the coordinates of 
+      boxes.
+    yxyx: a `bool` indicating whether the input box is of the format x_center
+      y_center, width, height or y_min, x_min, y_max, x_max.
+    darknet: a `bool` indicating whether the calling function is the yolo 
+      darknet loss.
+
+  Returns:
+    ciou: a `Tensor` who represents the complete intersection over union.
+  """
+  with tf.name_scope2('ciou'):
+    # compute center distance
+    if not yxyx:
+      xycc1, xycc2 = gt, pred
+      yxyx1 = xcycwh_to_yxyx(gt, darknet=darknet)
+      yxyx2 = xcycwh_to_yxyx(pred, darknet=darknet)
+    else:
+      yxyx1, yxyx2 = gt, pred
+      xycc1 = yxyx_to_xcycwh(gt)
+      xycc2 = yxyx_to_xcycwh(pred)
+
+    # build the 
+    cmi, cma, _ = smallest_encompassing_box(yxyx1, yxyx2, yxyx=True)
+    intersection, union = intersect_and_union(yxyx1, yxyx2, yxyx=True)
+    iou = math_ops.divide_no_nan(intersection, union)
+
+    b1xy, b1w, b1h = tf.split(xycc1, [2, 1, 1], axis=-1)
+    b2xy, b2w, b2h = tf.split(xycc2, [2, 1, 1], axis=-1)
+    bchw = cma - cmi
+
+    # center regularization
+    center_dist = tf.reduce_sum((b1xy - b2xy)**2, axis=-1)
+    c_diag = tf.reduce_sum(bchw**2, axis=-1)
+    regularization = math_ops.divide_no_nan(center_dist, c_diag)
+
+    # computer aspect ratio consistency
+    terma = math_ops.divide_no_nan(b1w, b1h) # gt
+    termb = math_ops.divide_no_nan(b2w, b2h) # pred
+    arcterm = tf.squeeze(
+      tf.math.pow(tf.math.atan(terma) - tf.math.atan(termb), 2), axis = -1)
+    v = (4 / math.pi ** 2) * arcterm
+
+    # aspect ration weight 
+    a = tf.stop_gradient(math_ops.divide_no_nan(v, ((1 - iou) + v)))
+
+    if darknet:
+      grad_scale = tf.stop_gradient(tf.square(b2w) + tf.square(b2h))
+      v *= grad_scale
+    
+    ciou = iou - regularization - (v * a)
+  return iou, ciou
