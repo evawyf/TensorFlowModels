@@ -702,10 +702,9 @@ class Yolo_Loss(object):
     #     fwidth, fheight, pred_box, anchor_grid, grid_points, darknet=False)
 
     scale = tf.convert_to_tensor([fwidth, fheight, fwidth, fheight])
-    scale_xy = tf.cast(2.0, pred_box.dtype)
     pred_xy, pred_wh = tf.split(pred_box, 2, axis = -1)
-    pred_xy = tf.math.sigmoid(pred_xy) * scale_xy - 0.5 
-    pred_wh = tf.math.sigmoid(pred_wh) * anchor_grid
+    pred_xy = tf.math.sigmoid(pred_xy) * 2.0 - 0.5 
+    pred_wh = (tf.math.sigmoid(pred_wh) * 2) ** 2 * anchor_grid
     pred_box = tf.concat([pred_xy, pred_wh], axis = -1)
 
     true_box = true_box * scale
