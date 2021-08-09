@@ -82,7 +82,7 @@ class YoloHead(tf.keras.layers.Layer):
       classes += tf.math.log(0.6 / (self._classes - 0.99))
       base = tf.concat([box, conf, classes], axis=-1)
 
-      print(base, summarize=-1)
+      print(base)
       base = tf.reshape(base, [-1])
       return base
 
