@@ -698,13 +698,13 @@ class Yolo_Loss(object):
     # 5. (box loss) based on input val new_cords decode the box predicitions
     #    and because we are using the scaled loss, do not change the gradients
     #    at all
-    # scale, _, _ = self._decode_boxes(
+    # scale, pred_box, _ = self._decode_boxes(
     #     fwidth, fheight, pred_box, anchor_grid, grid_points, darknet=False)
-    
-    ## temp 
+
     scale = tf.convert_to_tensor([fwidth, fheight, fwidth, fheight])
+    scale_xy = tf.cast(2.0, pred_box.dtype)
     pred_xy, pred_wh = tf.split(pred_box, 2, axis = -1)
-    pred_xy = tf.math.sigmoid(pred_xy) * 2.0 - 0.5 
+    pred_xy = tf.math.sigmoid(pred_xy) * scale_xy - 0.5 
     pred_wh = tf.math.sigmoid(pred_wh) * anchor_grid
     pred_box = tf.concat([pred_xy, pred_wh], axis = -1)
 
@@ -724,7 +724,7 @@ class Yolo_Loss(object):
 
     #     compute the loss of all the boxes and apply a mask such that
     #     within the 200 boxes, only the indexes of importance are covered
-    _, iou, box_loss = self.box_loss(true_box, pred_box, darknet=False)
+    iou, liou, box_loss = self.box_loss(true_box, pred_box, darknet=False)
     box_loss = apply_mask(tf.squeeze(ind_mask, axis=-1), box_loss)
     box_loss = tf.cast(tf.reduce_sum(box_loss), dtype=y_pred.dtype)
     box_loss = math_ops.divide_no_nan(box_loss, num_objs)
