@@ -267,7 +267,7 @@ class YoloTask(base_task.Task):
     inds = labels['inds']
     upds = labels['upds']
 
-    scale = tf.cast(3 / len(list(outputs.keys())), tf.float32)
+    
     for key in outputs.keys():
       (_loss, _loss_box, _loss_conf, _loss_class, _mean_loss, _avg_iou,
        _avg_obj, _recall50,
@@ -290,6 +290,7 @@ class YoloTask(base_task.Task):
       metric_dict[key]["avg_iou"] = tf.stop_gradient(_avg_iou)
       metric_dict[key]["avg_obj"] = tf.stop_gradient(_avg_obj)
 
+    scale = tf.cast(3 / len(list(outputs.keys())), tf.float32)
     return loss_val * scale, metric_dict
 
   def build_metrics(self, training=True):
