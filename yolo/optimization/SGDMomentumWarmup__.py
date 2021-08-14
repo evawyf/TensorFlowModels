@@ -157,27 +157,14 @@ class SGDMomentumWarmup(optimizer_v2.OptimizerV2):
       # true_fn=lambda:bias_lr,
       # false_fn=lambda:lr)
 
-
-
-      # return gen_training_ops.ResourceApplyKerasMomentum(
-      #     var=var.handle,
-      #     accum=momentum_var.handle,
-      #     lr=coefficients["lr_t"],
-      #     grad=grad,
-      #     momentum=coefficients["momentum"],
-      #     use_locking=self._use_locking,
-      #     use_nesterov=self.nesterov)
-      momentum_update = momentum_var.assign(
-        momentum * momentum_var + grad, use_locking=self._use_locking)
-      if self.nesterov:
-        weight_update = var.assign_add(
-          -lr * (grad + momentum * momentum_update), 
-          use_locking=self._use_locking)
-      else:
-        weight_update = var.assign_add(
-          -lr * momentum_update, 
-          use_locking=self._use_locking)
-      return tf.group(*[momentum_update, weight_update])
+      return gen_training_ops.ResourceApplyKerasMomentum(
+          var=var.handle,
+          accum=momentum_var.handle,
+          lr=coefficients["lr_t"],
+          grad=grad,
+          momentum=coefficients["momentum"],
+          use_locking=self._use_locking,
+          use_nesterov=self.nesterov)
     else:
       return gen_training_ops.ResourceApplyGradientDescent(
           var=var.handle,

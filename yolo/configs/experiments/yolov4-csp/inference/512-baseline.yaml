@@ -130,17 +130,25 @@ trainer:
         alpha: 0.2
         decay_steps: 8791200
         steps_per_epoch: 29600
+    # optimizer:
+    #   type: sgd_accum
+    #   sgd_accum:
+    #     momentum: 0.8
+    #     momentum_start: 0.937
+    #     nesterov: True
+    #     one_offset: false
+    #     warmup_steps: 88800 
+    #     accumulation_type: sum
+    #     accumulation_steps: 16
+    #     adjusted_for_accum: True
+    #     name: SGD
     optimizer:
-      type: sgd_accum
-      sgd_accum:
-        momentum: 0.8
-        momentum_start: 0.937
+      type: sgd_dymo
+      sgd_dymo:
+        momentum: 0.937
+        momentum_start: 0.8
         nesterov: True
-        one_offset: false
-        warmup_steps: 88800 
-        accumulation_type: sum
-        accumulation_steps: 16
-        adjusted_for_accum: True
+        warmup_steps: 5625 
         name: SGD
     # optimizer:
     #   type: sgd
