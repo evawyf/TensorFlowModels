@@ -125,12 +125,12 @@ trainer:
         decay_steps: 549450
         steps_per_epoch: 1850
     optimizer:
-      type: adamw
-      adamw:
+      type: adamw2
+      adamw2:
         beta_1: 0.937
         beta_2: 0.999
-        weight_decay_rate: 0.0005
-        name: adamw
+        weight_decay: 0.0005
+        name: adamw2
     warmup:
       type: 'linear'
       linear:

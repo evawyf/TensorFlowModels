@@ -107,7 +107,7 @@ task:
       use_tie_breaker: True
       use_scale_xy: True
       anchor_thresh: 4.0
-  weight_decay: 0.0005
+  weight_decay: 0.0000
   annotation_file: null
   load_darknet_weights: true
   darknet_load_decoder: true
@@ -136,12 +136,12 @@ trainer:
         weight_decay: 0.0005
         name: SGD
     # optimizer:
-    #   type: adamw
-    #   adamw:
+    #   type: adamw2
+    #   adamw2:
     #     beta_1: 0.937
     #     beta_2: 0.999
-    #     weight_decay_rate: 0.0005
-    #     name: adamw
+    #     weight_decay: 0.0005
+    #     name: adamw2
     # warmup:
     #   type: 'linear'
     #   linear:
