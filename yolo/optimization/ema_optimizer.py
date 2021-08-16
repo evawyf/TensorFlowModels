@@ -107,10 +107,6 @@ class ExponentialMovingAverage(ema_optimizer.ExponentialMovingAverage):
     #   for v_moving, v_normal in v_moving_and_v_normal:
     #     strategy.extended.update(v_moving, _apply_moving, args=(v_normal,))
 
-    # ctx = tf.distribute.get_replica_context()
-    # return ctx.merge_call(_update, args=(zip(self._average_weights,
-    #                                          self._model_weights),))
-    
     step = tf.cast(step, tf.float32)
     if step < self._start_step:
       decay = tf.constant(0., tf.float32)
@@ -128,6 +124,10 @@ class ExponentialMovingAverage(ema_optimizer.ExponentialMovingAverage):
     def _update(strategy, v_moving_and_v_normal):
       for v_moving, v_normal in v_moving_and_v_normal:
         strategy.extended.update(v_moving, _apply_moving, args=(v_normal,))
+
+    ctx = tf.distribute.get_replica_context()
+    return ctx.merge_call(_update, args=(zip(self._average_weights,
+                                             self._model_weights),))
 
   @property
   def learning_rate(self):

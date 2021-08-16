@@ -730,7 +730,8 @@ class Yolo_Loss(object):
     #     iou to take only a certain percent of the iou or the ground truth,
     #     i.e smooth the detection map
     #     build a the ground truth detection map
-    iou = tf.stop_gradient(tf.maximum(iou, 0.0))
+    iou = tf.stop_gradient(iou)
+    iou = tf.maximum(iou, 0.0)
     smoothed_iou = ((
         (1 - self._objectness_smooth) * tf.cast(ind_mask, iou.dtype)) +
                     self._objectness_smooth * tf.expand_dims(iou, axis=-1))
@@ -739,7 +740,13 @@ class Yolo_Loss(object):
         inds, smoothed_iou, pred_conf, ind_mask, update=False)
     true_conf = tf.squeeze(true_conf, axis=-1)
 
-    #    (class loss) build the one hot encoded true class values
+    #     compute the detection map loss, there should be no masks
+    #     applied
+    bce = ks.losses.binary_crossentropy(
+        K.expand_dims(true_conf, axis=-1), pred_conf, from_logits=True)
+    conf_loss = tf.reduce_mean(bce)
+
+    # 7.  (class loss) build the one hot encoded true class values
     #     compute the loss on the classes, apply the same inds mask
     #     and the compute the average of all the values
     class_loss = ks.losses.binary_crossentropy(
@@ -750,12 +757,6 @@ class Yolo_Loss(object):
     class_loss = apply_mask(tf.squeeze(ind_mask, axis=-1), class_loss)
     class_loss = math_ops.divide_no_nan(tf.reduce_sum(class_loss), num_objs)
 
-    #     compute the detection map loss, there should be no masks
-    #     applied
-    bce = ks.losses.binary_crossentropy(
-        K.expand_dims(true_conf, axis=-1), pred_conf, from_logits=True)
-    conf_loss = tf.reduce_mean(bce)
-
     # 8. apply the weights to each loss
     box_loss *= self._iou_normalizer 
     class_loss *= self._cls_normalizer 
@@ -765,8 +766,11 @@ class Yolo_Loss(object):
     mean_loss = box_loss + class_loss + conf_loss
     loss = mean_loss * tf.cast(batch_size, mean_loss.dtype)
 
-    # 10. compute all the values for the metrics
+    # 4. apply sigmoid to items and use the gradient trap to contol the backprop
+    #    and selective gradient clipping
     sigmoid_conf = tf.stop_gradient(tf.sigmoid(pred_conf))
+
+    # 10. compute all the values for the metrics
     recall50, precision50 = self.APAR(sigmoid_conf, grid_mask, pct=0.5)
     avg_iou = self.avgiou(apply_mask(tf.squeeze(ind_mask, axis=-1), iou))
     avg_obj = self.avgiou(tf.squeeze(sigmoid_conf, axis=-1) * grid_mask)
