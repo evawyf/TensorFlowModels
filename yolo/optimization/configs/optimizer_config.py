@@ -100,6 +100,28 @@ class SGDMomentumWarmupWConfig(BaseOptimizerConfig):
   warmup_steps: int = 1000
 
 @dataclasses.dataclass
+class AdamWConfig(BaseOptimizerConfig):
+  """Configuration for Adam optimizer.
+
+  The attributes for this class matches the arguments of
+  tf.keras.optimizer.Adam.
+
+  Attributes:
+    name: name of the optimizer.
+    beta_1: decay rate for 1st order moments.
+    beta_2: decay rate for 2st order moments.
+    epsilon: epsilon value used for numerical stability in Adam optimizer.
+    amsgrad: boolean. Whether to apply AMSGrad variant of this algorithm from
+      the paper "On the Convergence of Adam and beyond".
+  """
+  name: str = "Adam"
+  beta_1: float = 0.9
+  beta_2: float = 0.999
+  epsilon: float = 1e-07
+  amsgrad: bool = False
+  weight_decay: float = 0.0000
+
+@dataclasses.dataclass
 class ScaledYoloSGDConfig(BaseOptimizerConfig):
   """Configuration for SGD optimizer.
 
@@ -117,3 +139,4 @@ class ScaledYoloSGDConfig(BaseOptimizerConfig):
   momentum_start: float = 0.0
   momentum: float = 0.8
   warmup_steps: int = 1000
+  
