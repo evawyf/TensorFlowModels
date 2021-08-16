@@ -61,7 +61,7 @@ task:
       pre_nms_points: 500
       use_scaled_loss: true
   train_data:
-    global_batch_size: 2
+    global_batch_size: 1
     dtype: float32
     input_path: '/media/vbanna/DATA_SHARE/CV/datasets/COCO_raw/records/train*'
     is_training: true
@@ -108,8 +108,8 @@ task:
       best_match_only: True
   weight_decay: 0.0005
   annotation_file: null
-  # load_darknet_weights: true
-  # darknet_load_decoder: true
+  load_darknet_weights: true
+  darknet_load_decoder: true
 trainer:
   train_steps: 8880000 # 160 epochs at 64 batchsize -> 500500 * 64/2
   validation_steps: 5000
