@@ -151,14 +151,6 @@ class SGDMomentumWarmup(optimizer_v2.OptimizerV2):
       momentum = coefficients["momentum"]
       lr = coefficients["lr_t"]
 
-      # bias_lr = coefficients["bias_lr"]
-      # lr = tf.cond(tf.logical_and(tf.rank(grad) == 1,
-      #                           tf.shape(grad)[0] == self._LR_bias_depth),
-      # true_fn=lambda:bias_lr,
-      # false_fn=lambda:lr)
-
-
-
       # return gen_training_ops.ResourceApplyKerasMomentum(
       #     var=var.handle,
       #     accum=momentum_var.handle,
