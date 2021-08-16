@@ -36,6 +36,7 @@ import tensorflow_addons as tfa
 from official.nlp import optimization as adaopt
 
 from yolo.optimization.CompositeOptimizer import CompositeOptimizer
+from yolo.optimization.SGDMomentumWarmup import SGDMomentumWarmupW
 
 OptimizationConfig = optimization.OptimizationConfig
 RuntimeConfig = config_definitions.RuntimeConfig
@@ -633,7 +634,8 @@ class YoloTask(base_task.Task):
       optimizer_weights = opt_factory.build_optimizer(opt_factory.build_learning_rate())
       
       wd = 0.0
-      if isinstance(optimizer_weights, tfa.optimizers.DecoupledWeightDecayExtension):
+      if isinstance(optimizer_weights, 
+                   tfa.optimizers.DecoupledWeightDecayExtension) or isinstance(optimizer_weights, SGDMomentumWarmupW):
         wd = opt_factory._optimizer_config.weight_decay
         opt_factory._optimizer_config.weight_decay = 0.0
       elif isinstance(optimizer_weights, adaopt.AdamWeightDecay):
@@ -643,7 +645,8 @@ class YoloTask(base_task.Task):
       optimizer_others = opt_factory.build_optimizer(opt_factory.build_learning_rate())
       optimizer_biases = opt_factory.build_optimizer(opt_factory.get_bias_lr_schedule(self._task_config.smart_bias_lr))
 
-      if isinstance(optimizer_weights, tfa.optimizers.DecoupledWeightDecayExtension):
+      if isinstance(optimizer_weights, 
+                   tfa.optimizers.DecoupledWeightDecayExtension) or isinstance(optimizer_weights, SGDMomentumWarmupW):
         opt_factory._optimizer_config.weight_decay = wd
       elif isinstance(optimizer_weights, adaopt.AdamWeightDecay):
         opt_factory._optimizer_config.weight_decay_rate = wd
@@ -659,6 +662,8 @@ class YoloTask(base_task.Task):
       )
 
       print(optimizer_weights, optimizer_others, optimizer_biases)
+
+
       # import matplotlib.pyplot as plt
       # import matplotlib
       # matplotlib.use('TkAgg')
@@ -670,10 +675,10 @@ class YoloTask(base_task.Task):
       # for i in range(0, 555000, 2):
       #   x.append(i)
       #   y1.append(lra(i))
-      #   # y2.append(lrb(i))
+      #   y2.append(lrb(i))
       #   print(i)
       # plt.plot(x, y1)
-      # # plt.plot(x, y2)
+      # plt.plot(x, y2)
       # plt.show()
 
     else:
