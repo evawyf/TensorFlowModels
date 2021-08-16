@@ -1,4 +1,4 @@
-from numpy import blackman
+from numpy import blackman, isin
 from tensorflow.keras import optimizers
 from tensorflow.python.keras.backend import int_shape
 from tensorflow.python.ops.clip_ops import clip_by_value
@@ -32,6 +32,8 @@ from typing import Optional
 from official.core import config_definitions
 from yolo import optimization 
 from official.modeling import performance
+import tensorflow_addons as tfa
+from official.nlp import optimization as adaopt
 
 from yolo.optimization.CompositeOptimizer import CompositeOptimizer
 
@@ -629,8 +631,16 @@ class YoloTask(base_task.Task):
     opt_factory._use_ema = False
     if (self._task_config.smart_bias_lr > 0.0):
       optimizer_weights = opt_factory.build_optimizer(opt_factory.build_learning_rate())
+      
+      wd = 0.0
+      if isinstance(optimizer_weights, tfa.optimizers.AdamW) or isinstance(optimizer_weights, adaopt.AdamWeightDecay):
+        wd = opt_factory._optimizer_config.weight_decay_rate
+        opt_factory._optimizer_config.weight_decay_rate = 0.0
       optimizer_others = opt_factory.build_optimizer(opt_factory.build_learning_rate())
       optimizer_biases = opt_factory.build_optimizer(opt_factory.get_bias_lr_schedule(self._task_config.smart_bias_lr))
+
+      if isinstance(optimizer_weights, tfa.optimizers.AdamW) or isinstance(optimizer_weights, adaopt.AdamWeightDecay):
+        opt_factory._optimizer_config.weight_decay_rate = wd
 
       optimizer_weights.name = "weights_lr"
       optimizer_others.name = "others_lr"
