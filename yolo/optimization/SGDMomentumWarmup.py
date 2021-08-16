@@ -5,6 +5,7 @@ from tensorflow.python.ops import gen_resource_variable_ops
 from tensorflow.python.keras.optimizer_v2 import learning_rate_schedule
 from tensorflow.python.training import gen_training_ops
 from tensorflow.python.util.tf_export import keras_export
+from tensorflow_addons.optimizers import DecoupledWeightDecayExtension
 
 import tensorflow as tf
 
@@ -224,17 +225,26 @@ class SGDMomentumWarmup(optimizer_v2.OptimizerV2):
     return config
 
 
-# if __name__ == "__main__":
-#   from yolo import run
-#   import os
-#   optimizer = SGDAccumulated(accumulation_steps = 8)
-
-#   config = [os.path.abspath('yolo/configs/experiments/yolov4-eval.yaml')]
-#   model_dir = "" #os.path.abspath("../checkpoints/yolo_dt8_norm_iou")
-
-#   task, model, params = run.load_model(experiment='yolo_custom', config_path=config, model_dir=model_dir)
-
-#   train_data = task.build_inputs(task.task_config.train_data)
-#   validation_data = task.build_inputs(task.task_config.train_data)
-
-#   model.compile(optimizer = optimizer)
+class SGDMomentumWarmupW(DecoupledWeightDecayExtension, SGDMomentumWarmup):
+  def __init__(
+        self,
+        weight_decay,
+        learning_rate=0.01,
+        momentum=0.0,
+        momentum_start=0.0,
+        warmup_steps=1000,
+        nesterov=False,
+        name="SGD",
+        **kwargs
+    ):
+    print(weight_decay)
+    super().__init__(
+        weight_decay,
+        learning_rate=learning_rate,
+        momentum=momentum,
+        momentum_start=momentum_start,
+        warmup_steps=warmup_steps,
+        nesterov=nesterov,
+        name=name,
+        **kwargs,
+    )

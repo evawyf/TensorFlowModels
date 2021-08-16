@@ -95,7 +95,7 @@ task:
       use_scale_xy: True
       anchor_thresh: 4.0
       best_match_only: True
-  weight_decay: 0.0005
+  weight_decay: 0.0000
   annotation_file: null
 trainer:
   train_steps: 555000 # 160 epochs at 64 batchsize -> 500500 * 64/2
@@ -118,10 +118,13 @@ trainer:
         decay_steps: 549450
         steps_per_epoch: 1850
     optimizer:
-      type: sgd
-      sgd:
+      type: sgd_dymow
+      sgd_dymow:
         momentum: 0.937
+        momentum_start: 0.937
         nesterov: True
+        warmup_steps: 5550
+        weight_decay: 0.0005
         name: SGD
     warmup:
       type: 'linear'

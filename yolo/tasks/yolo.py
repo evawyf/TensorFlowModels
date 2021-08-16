@@ -633,13 +633,19 @@ class YoloTask(base_task.Task):
       optimizer_weights = opt_factory.build_optimizer(opt_factory.build_learning_rate())
       
       wd = 0.0
-      if isinstance(optimizer_weights, tfa.optimizers.AdamW) or isinstance(optimizer_weights, adaopt.AdamWeightDecay):
+      if isinstance(optimizer_weights, tfa.optimizers.DecoupledWeightDecayExtension):
+        wd = opt_factory._optimizer_config.weight_decay
+        opt_factory._optimizer_config.weight_decay = 0.0
+      elif isinstance(optimizer_weights, adaopt.AdamWeightDecay):
         wd = opt_factory._optimizer_config.weight_decay_rate
         opt_factory._optimizer_config.weight_decay_rate = 0.0
+
       optimizer_others = opt_factory.build_optimizer(opt_factory.build_learning_rate())
       optimizer_biases = opt_factory.build_optimizer(opt_factory.get_bias_lr_schedule(self._task_config.smart_bias_lr))
 
-      if isinstance(optimizer_weights, tfa.optimizers.AdamW) or isinstance(optimizer_weights, adaopt.AdamWeightDecay):
+      if isinstance(optimizer_weights, tfa.optimizers.DecoupledWeightDecayExtension):
+        opt_factory._optimizer_config.weight_decay = wd
+      elif isinstance(optimizer_weights, adaopt.AdamWeightDecay):
         opt_factory._optimizer_config.weight_decay_rate = wd
 
       optimizer_weights.name = "weights_lr"
@@ -652,7 +658,7 @@ class YoloTask(base_task.Task):
         (optimizer_others, lambda:other)]
       )
 
-
+      print(optimizer_weights, optimizer_others, optimizer_biases)
       # import matplotlib.pyplot as plt
       # import matplotlib
       # matplotlib.use('TkAgg')

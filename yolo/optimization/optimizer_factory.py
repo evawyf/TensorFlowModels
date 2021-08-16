@@ -17,6 +17,7 @@ from typing import Callable, Union
 import gin
 import tensorflow as tf
 import tensorflow_addons.optimizers as tfa_optimizers
+from tensorflow_addons.optimizers.weight_decay_optimizers import AdamW
 from official.modeling.optimization import configs
 
 from yolo.optimization import (SGDAccumulated, SGDMomentumWarmup, ScaledYoloSGD)
@@ -27,8 +28,10 @@ from yolo.optimization.configs import optimization_config as opt_cfg
 
 optimizer_factory.OPTIMIZERS_CLS.update({
     'sgd_dymo': SGDMomentumWarmup.SGDMomentumWarmup,
+    'sgd_dymow': SGDMomentumWarmup.SGDMomentumWarmupW,
     'sgd_accum': SGDAccumulated.SGDAccumulated,
-    'scaled_sgd':ScaledYoloSGD.ScaledYoloSGD
+    'scaled_sgd':ScaledYoloSGD.ScaledYoloSGD,
+    'adamw2': tfa_optimizers.AdamW
 })
 
 OPTIMIZERS_CLS = optimizer_factory.OPTIMIZERS_CLS
