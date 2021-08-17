@@ -29,7 +29,7 @@ OPTIMIZERS_CLS = {
     # 'sgd': tf.keras.optimizers.SGD,
     'sgd': SGD.SGD,
     'adam': tf.keras.optimizers.Adam,
-    'adamw': tfa_optimizers.AdamW, #nlp_optimization.AdamWeightDecay,
+    'adamw': nlp_optimization.AdamWeightDecay,
     'lamb': tfa_optimizers.LAMB,
     'rmsprop': tf.keras.optimizers.RMSprop,
     'sgd_accum': SGDAccumulated.SGDAccumulated

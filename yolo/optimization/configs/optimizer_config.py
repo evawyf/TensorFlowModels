@@ -98,6 +98,7 @@ class SGDMomentumWarmupWConfig(BaseOptimizerConfig):
   momentum_start: float = 0.0
   momentum: float = 0.9
   warmup_steps: int = 1000
+  sim_torch: bool = True
 
 @dataclasses.dataclass
 class AdamWConfig(BaseOptimizerConfig):

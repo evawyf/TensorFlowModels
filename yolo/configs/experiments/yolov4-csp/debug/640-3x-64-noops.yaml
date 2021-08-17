@@ -121,10 +121,11 @@ trainer:
       type: sgd_dymow
       sgd_dymow:
         momentum: 0.937
-        momentum_start: 0.937
-        nesterov: True
+        momentum_start: 0.8
+        nesterov: true
         warmup_steps: 5550
         weight_decay: 0.0005
+        sim_torch: true
         name: SGD
     warmup:
       type: 'linear'

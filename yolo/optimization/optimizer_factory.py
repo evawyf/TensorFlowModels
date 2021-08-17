@@ -31,7 +31,6 @@ optimizer_factory.OPTIMIZERS_CLS.update({
     'sgd_dymow': SGDMomentumWarmup.SGDMomentumWarmupW,
     'sgd_accum': SGDAccumulated.SGDAccumulated,
     'scaled_sgd':ScaledYoloSGD.ScaledYoloSGD,
-    'adamw2': tfa_optimizers.AdamW
 })
 
 OPTIMIZERS_CLS = optimizer_factory.OPTIMIZERS_CLS

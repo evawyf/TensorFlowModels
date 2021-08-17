@@ -225,31 +225,6 @@ class SGDMomentumWarmup(optimizer_v2.OptimizerV2):
     return config
 
 
-# class SGDMomentumWarmupW(DecoupledWeightDecayExtension, SGDMomentumWarmup):
-#   def __init__(
-#         self,
-#         weight_decay,
-#         learning_rate=0.01,
-#         momentum=0.0,
-#         momentum_start=0.0,
-#         warmup_steps=1000,
-#         nesterov=False,
-#         name="SGD",
-#         **kwargs
-#     ):
-#     print(weight_decay)
-#     super().__init__(
-#         weight_decay,
-#         learning_rate=learning_rate,
-#         momentum=momentum,
-#         momentum_start=momentum_start,
-#         warmup_steps=warmup_steps,
-#         nesterov=nesterov,
-#         name=name,
-#         **kwargs,
-#     )
-
-
 # problem is that sub division cannot change between saves
 class SGDMomentumWarmupW(optimizer_v2.OptimizerV2):
   r"""Gradient descent (with momentum) optimizer.
@@ -320,6 +295,7 @@ class SGDMomentumWarmupW(optimizer_v2.OptimizerV2):
                momentum_start=0.0,
                warmup_steps=1000,
                nesterov=False,
+               sim_torch=False, 
                name="SGD",
                **kwargs):
     super(SGDMomentumWarmupW, self).__init__(name, **kwargs)
@@ -340,6 +316,7 @@ class SGDMomentumWarmupW(optimizer_v2.OptimizerV2):
     self._set_hyper("momentum_start", momentum_start)
     self._set_hyper("warmup_steps", tf.cast(warmup_steps, tf.int32))
     self.nesterov = nesterov
+    self.sim_torch = sim_torch
 
   def _set_bias_lr(self, lr, bias_key):
     self._LR_bias_depth = bias_key
@@ -420,7 +397,7 @@ class SGDMomentumWarmupW(optimizer_v2.OptimizerV2):
       dparams += (weight_decay * var)
     
     lr = coefficients["lr_t"]
-    dparams = dparams * lr
+    dparams = -lr * dparams 
     if self._momentum:
       momentum_var = self.get_slot(var, "momentum")
       momentum = coefficients["momentum"]
@@ -433,8 +410,7 @@ class SGDMomentumWarmupW(optimizer_v2.OptimizerV2):
       else:
         dparams = momentum_update
 
-    
-    weight_update = var.assign_add(-dparams, use_locking=self._use_locking)
+    weight_update = var.assign_add(dparams, use_locking=self._use_locking)
     groups.append(weight_update)
     return tf.group(*groups)
 
@@ -442,7 +418,10 @@ class SGDMomentumWarmupW(optimizer_v2.OptimizerV2):
     var_device, var_dtype = var.device, var.dtype.base_dtype
     coefficients = ((apply_state or {}).get((var_device, var_dtype)) or
                     self._fallback_apply_state(var_device, var_dtype))
-    return self._apply(grad, var, coefficients)
+    if self.sim_torch:
+      return self._apply(grad, var, coefficients)
+    else:
+      return self._apply_tf(grad, var, coefficients)
 
   def _resource_apply_sparse_duplicate_indices(self, grad, var, indices,
                                                **kwargs):
@@ -456,14 +435,20 @@ class SGDMomentumWarmupW(optimizer_v2.OptimizerV2):
           kwargs.get("apply_state", {}).get((var_device, var_dtype)) or
           self._fallback_apply_state(var_device, var_dtype))
 
-      return self._apply(grad, var, coefficients)
+      if self.sim_torch:
+        return self._apply(grad, var, coefficients)
+      else:
+        return self._apply_tf(grad, var, coefficients)
 
   def _resource_apply_sparse(self, grad, var, indices, apply_state=None):
     # This method is only needed for momentum optimization.
     var_device, var_dtype = var.device, var.dtype.base_dtype
     coefficients = ((apply_state or {}).get((var_device, var_dtype)) or
                     self._fallback_apply_state(var_device, var_dtype))
-    return self._apply(grad, var, coefficients)
+    if self.sim_torch:
+      return self._apply(grad, var, coefficients)
+    else:
+      return self._apply_tf(grad, var, coefficients)
 
 
   def get_config(self):

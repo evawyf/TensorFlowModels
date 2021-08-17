@@ -45,7 +45,6 @@ class OptimizerConfig(optimization_cfg.OptimizerConfig):
   sgd_dymo: opt_cfg.SGDMomentumWarmupConfig = opt_cfg.SGDMomentumWarmupConfig()
   sgd_dymow: opt_cfg.SGDMomentumWarmupWConfig = opt_cfg.SGDMomentumWarmupWConfig()
   scaled_sgd: opt_cfg.ScaledYoloSGDConfig = opt_cfg.ScaledYoloSGDConfig()
-  adamw2: opt_cfg.AdamWConfig = opt_cfg.AdamWConfig()
 
 
 @dataclasses.dataclass
