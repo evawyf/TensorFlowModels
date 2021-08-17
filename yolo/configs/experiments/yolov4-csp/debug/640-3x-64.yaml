@@ -124,13 +124,22 @@ trainer:
         alpha: 0.2
         decay_steps: 549450
         steps_per_epoch: 1850
+    # optimizer:
+    #   type: sgd_dymo
+    #   sgd_dymo:
+    #     momentum: 0.937
+    #     momentum_start: 0.8
+    #     nesterov: True
+    #     warmup_steps: 5550
+    #     name: SGD
     optimizer:
-      type: sgd_dymo
-      sgd_dymo:
+      type: sgd_dymow
+      sgd_dymow:
         momentum: 0.937
-        momentum_start: 0.8
+        momentum_start: 0.937
         nesterov: True
         warmup_steps: 5550
+        weight_decay: 0.0005
         name: SGD
     warmup:
       type: 'linear'

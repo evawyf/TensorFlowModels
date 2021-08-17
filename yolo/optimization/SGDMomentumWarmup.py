@@ -389,7 +389,6 @@ class SGDMomentumWarmupW(optimizer_v2.OptimizerV2):
   def _apply(self, grad, var, coefficients):
     dparams = grad
     groups = []
-    lr = coefficients["lr_t"]
     
     if self._weight_decay:
       weight_decay = coefficients["weight_decay"]
@@ -407,9 +406,10 @@ class SGDMomentumWarmupW(optimizer_v2.OptimizerV2):
       else:
         dparams = momentum_update
 
+    lr = coefficients["lr_t"]
     weight_update = var.assign_add(-lr * dparams, use_locking=self._use_locking)
-
     groups.append(weight_update)
+
     return tf.group(*groups)
 
   def _resource_apply_dense(self, grad, var, apply_state=None):
