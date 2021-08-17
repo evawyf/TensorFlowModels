@@ -409,7 +409,6 @@ class SGDMomentumWarmupW(optimizer_v2.OptimizerV2):
     lr = coefficients["lr_t"]
     weight_update = var.assign_add(-lr * dparams, use_locking=self._use_locking)
     groups.append(weight_update)
-
     return tf.group(*groups)
 
   def _resource_apply_dense(self, grad, var, apply_state=None):
