@@ -224,6 +224,31 @@ class SGDMomentumWarmup(optimizer_v2.OptimizerV2):
     })
     return config
 
+# def _apply_tf(self, grad, var, coefficients):
+#   dparams = grad
+#   groups = []
+  
+#   if self._weight_decay:
+#     weight_decay = coefficients["weight_decay"]
+#     dparams += (weight_decay * var)
+  
+#   lr = coefficients["lr_t"]
+#   dparams = -lr * dparams 
+#   if self._momentum:
+#     momentum_var = self.get_slot(var, "momentum")
+#     momentum = coefficients["momentum"]
+#     momentum_update = momentum_var.assign(
+#       momentum * momentum_var + dparams, use_locking=self._use_locking)
+#     groups.append(momentum_update)
+
+#     if self.nesterov:
+#       dparams += (momentum * momentum_update)
+#     else:
+#       dparams = momentum_update
+
+#   weight_update = var.assign_add(dparams, use_locking=self._use_locking)
+#   groups.append(weight_update)
+#   return tf.group(*groups)
 
 # problem is that sub division cannot change between saves
 class SGDMomentumWarmupW(optimizer_v2.OptimizerV2):
@@ -389,30 +414,34 @@ class SGDMomentumWarmupW(optimizer_v2.OptimizerV2):
     return tf.group(*groups)
 
   def _apply_tf(self, grad, var, coefficients):
-    dparams = grad
-    groups = []
-    
-    if self._weight_decay:
-      weight_decay = coefficients["weight_decay"]
-      dparams += (weight_decay * var)
-    
     lr = coefficients["lr_t"]
-    dparams = -lr * dparams 
-    if self._momentum:
-      momentum_var = self.get_slot(var, "momentum")
-      momentum = coefficients["momentum"]
-      momentum_update = momentum_var.assign(
-        momentum * momentum_var + dparams, use_locking=self._use_locking)
-      groups.append(momentum_update)
 
-      if self.nesterov:
-        dparams += (momentum * momentum_update)
+    def decay_op(var, learning_rate, apply_state):
+      if self._weight_decay:
+        return var.assign_sub(
+            learning_rate * var *
+            apply_state['weight_decay'],
+            use_locking=self._use_locking)
+      return tf.no_op()
+    
+    decay = decay_op(var, lr, coefficients)
+    with tf.control_dependencies([decay]):
+      if self._momentum:
+        momentum_var = self.get_slot(var, "momentum")
+        return gen_training_ops.ResourceApplyKerasMomentum(
+            var=var.handle,
+            accum=momentum_var.handle,
+            lr=lr,
+            grad=grad,
+            momentum=coefficients["momentum"],
+            use_locking=self._use_locking,
+            use_nesterov=self.nesterov)
       else:
-        dparams = momentum_update
-
-    weight_update = var.assign_add(dparams, use_locking=self._use_locking)
-    groups.append(weight_update)
-    return tf.group(*groups)
+        return gen_training_ops.ResourceApplyGradientDescent(
+            var=var.handle,
+            alpha=lr,
+            delta=grad,
+            use_locking=self._use_locking)
 
   def _resource_apply_dense(self, grad, var, apply_state=None):
     var_device, var_dtype = var.device, var.dtype.base_dtype
@@ -422,6 +451,7 @@ class SGDMomentumWarmupW(optimizer_v2.OptimizerV2):
       return self._apply(grad, var, coefficients)
     else:
       return self._apply_tf(grad, var, coefficients)
+
 
   def _resource_apply_sparse_duplicate_indices(self, grad, var, indices,
                                                **kwargs):
