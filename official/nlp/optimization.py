@@ -132,6 +132,7 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
                **kwargs):
     super(AdamWeightDecay, self).__init__(learning_rate, beta_1, beta_2,
                                           epsilon, amsgrad, name, **kwargs)
+    print(weight_decay_rate)
     self.weight_decay_rate = weight_decay_rate
     self.gradient_clip_norm = gradient_clip_norm
     self._include_in_weight_decay = include_in_weight_decay
