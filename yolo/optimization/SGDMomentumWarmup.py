@@ -411,6 +411,33 @@ class SGDMomentumWarmupW(optimizer_v2.OptimizerV2):
     groups.append(weight_update)
     return tf.group(*groups)
 
+  def _apply_tf(self, grad, var, coefficients):
+    dparams = grad
+    groups = []
+    
+    if self._weight_decay:
+      weight_decay = coefficients["weight_decay"]
+      dparams += (weight_decay * var)
+    
+    lr = coefficients["lr_t"]
+    dparams = dparams * lr
+    if self._momentum:
+      momentum_var = self.get_slot(var, "momentum")
+      momentum = coefficients["momentum"]
+      momentum_update = momentum_var.assign(
+        momentum * momentum_var + dparams, use_locking=self._use_locking)
+      groups.append(momentum_update)
+
+      if self.nesterov:
+        dparams += (momentum * momentum_update)
+      else:
+        dparams = momentum_update
+
+    
+    weight_update = var.assign_add(-dparams, use_locking=self._use_locking)
+    groups.append(weight_update)
+    return tf.group(*groups)
+
   def _resource_apply_dense(self, grad, var, apply_state=None):
     var_device, var_dtype = var.device, var.dtype.base_dtype
     coefficients = ((apply_state or {}).get((var_device, var_dtype)) or
